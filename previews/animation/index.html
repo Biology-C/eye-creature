@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>眼球怪・像素動作試片</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#141c25;color:#eaf0ed;font:16px/1.7 system-ui,sans-serif}main{max-width:1150px;margin:auto;padding:32px 24px}h1{font-size:30px;margin:5px 0}p{color:#a5b7bc;margin:8px 0 20px}.eyebrow{color:#70cbd1;letter-spacing:.16em;font-size:12px}.controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:18px 0}button,select{background:#253540;border:1px solid #4b6471;color:#f4f4ed;font:inherit;padding:9px 14px;border-radius:8px;min-height:44px;cursor:pointer}button[aria-pressed=true]{border-color:#7ee5e6;color:#7ee5e6}canvas{image-rendering:pixelated;display:block}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:#20303a;border:1px solid #354752;border-radius:12px;padding:16px;overflow:hidden}.card h2{font-size:18px;margin:0}.card p{font-size:12px;min-height:42px;margin:4px 0}.big{width:100%;aspect-ratio:1;background:repeating-conic-gradient(#253743 0 25%,#2b3f4b 0 50%) 0/24px 24px;border-radius:8px}.actual{display:flex;justify-content:center;align-items:center;height:92px;border-bottom:1px solid #43545e}.small{width:64px;height:64px}.meta{font-size:12px;color:#a5b7bc;display:flex;justify-content:space-between;margin:12px 0 4px}#stage{width:100%;height:224px;background:#17232c;border:1px solid #354752;border-radius:12px}h2{font-size:20px}.note{font-size:13px}a{color:#7ee5e6}:focus-visible{outline:3px solid #edb66c;outline-offset:3px}@media(max-width:800px){.cards{grid-template-columns:repeat(2,1fr)}}@media(max-width:420px){main{padding:20px 12px}.card{padding:10px}h1{font-size:25px}}
+</style><main>
+<div class="eyebrow">EYE CREATURE · PIXEL MOTION STUDY 01</div><h1>先看動起來的感覺。</h1><p>西洋龍膜翼、低空漂浮、單條長尾。四組動作同步播放，下方另有橫向移動示意。</p>
+<div class="controls"><button id="play" aria-pressed="true">暫停</button><button id="step">下一格</button><label>速度 <select id="speed"><option value="0.5">0.5× 慢看</option><option value="1" selected>1×</option><option value="1.5">1.5×</option></select></label><button id="background">淺色背景</button><span id="status" role="status">載入圖稿…</span></div>
+<section class="cards" id="cards"></section>
+<h2>橫向移動示意</h2><p class="note">64px 角色框，地面僅供對照漂浮高度。方向鍵／A、D 移動，空白鍵甩尾；也可使用按鈕。</p>
+<canvas id="stage" width="960" height="224" tabindex="0" aria-label="側視角色試片，左右鍵移動，空白鍵甩尾"></canvas>
+<div class="controls"><button id="left">← 向左</button><button id="right">向右 →</button><button id="attack">甩尾</button><button id="auto" aria-pressed="true">自動演示：開</button></div>
+<p class="note">每組 6 個關鍵影格；移動依蝙蝠分格參考展翼下拍、折收回程；眼球隨拍翼上下輕移 1px，翼根與尾巴同步跟隨，保持連接自然。一般動作 8 FPS，甩尾使用蓄力／快速揮出／回復的不同停留時間。轉向播放右→左→右，兩端稍作停留。上排放大檢視，下排每個完整角色框為 64 CSS px（瀏覽器縮放 100%）。這是 AI 圖稿的動作審閱樣張，局部輪廓與尾長仍需逐幀修整，尚未接入遊戲。</p>
+<a href="../README.md">角色規格</a> · <a href="sprites.png">完整動作圖</a>
+</main><script>
+const defs=[['懸停','小幅拍翼，尾巴平衡。'],['移動','隨拍翼輕微上下漂浮；展翼下拍，收翼回程。'],['轉向','瞳孔與身體經正面轉至另一側。'],['甩尾','收尾蓄力 → 向前揮出 → 回復。']];
+const cards=document.querySelector('#cards');
+cards.innerHTML=defs.map(([name,desc],i)=>`<article class="card"><h2>${String(i+1).padStart(2,'0')} ${name}</h2><p>${desc}</p><canvas class="big" width="64" height="64" aria-label="${name}放大動畫"></canvas><div class="meta"><span>實際尺寸 · 64px</span><span class="frame"></span></div><div class="actual"><canvas class="small" width="64" height="64" aria-label="${name}實際尺寸動畫"></canvas></div></article>`).join('');
+const image=new Image(), stage=document.querySelector('#stage'),ctx=stage.getContext('2d');
+let ready=false,playing=!matchMedia('(prefers-reduced-motion: reduce)').matches,time=0,last=0,rate=1,light=false,auto=true,x=430,face=1,turn=-1,attack=-1,held=0;
+new ResizeObserver(()=>{stage.width=Math.round(stage.clientWidth);x=Math.max(10,Math.min(stage.width-74,x));paint()}).observe(stage);
+const buffers=Array.from({length:24},()=>{const c=document.createElement('canvas');c.width=c.height=64;return c});
+const turnSeq=[0,0,1,2,3,4,5,5,4,3,2,1],attackDur=[150,180,70,80,100,220];
+function attackFrame(t){let sum=0;for(let i=0;i<6;i++){sum+=attackDur[i];if(t<sum)return i}return 5}
+function frame(row,t){return row===2?turnSeq[Math.floor(t/125)%turnSeq.length]:row===3?attackFrame(t%800):Math.floor(t/125)%6}
+// Movement preserves the body artwork; the connected character bobs with each wingbeat.
+// Clip regions belong to the preview renderer; the source artwork is untouched.
+const movingFrames=Array.from({length:6},()=>{const c=document.createElement('canvas');c.width=c.height=64;return c});
+function wingPath(side){const p=new Path2D();const points=side===0?[[0,0],[34,0],[34,20],[28,23],[26,28],[26,34],[0,34]]:[[35,0],[64,0],[64,35],[51,35],[50,29],[48,24],[43,21],[35,21]];points.forEach(([x,y],i)=>i?p.lineTo(x,y):p.moveTo(x,y));p.closePath();return p}
+function buildMovement(){
+ const base=buffers[6],body=document.createElement('canvas');body.width=body.height=64;const g=body.getContext('2d');g.drawImage(base,0,0);
+ const wings=[0,1].map(side=>{const c=document.createElement('canvas');c.width=c.height=64;const w=c.getContext('2d');w.save();w.clip(wingPath(side));w.drawImage(base,0,0);w.restore();g.save();g.clip(wingPath(side));g.clearRect(0,0,64,64);g.restore();
+ // Keep the connected wing silhouette, excluding isolated pixels from the crop boundary.
+ const data=w.getImageData(0,0,64,64),seen=new Set();let largest=[];
+ for(let start=0;start<4096;start++){
+  if(seen.has(start)||data.data[start*4+3]<128)continue;
+  const group=[start];seen.add(start);
+  for(let q=0;q<group.length;q++){
+   const n=group[q],x=n%64,y=Math.floor(n/64);
+   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+    const nx=x+dx,ny=y+dy,k=ny*64+nx;
+    if(nx<0||nx>=64||ny<0||ny>=64||seen.has(k)||data.data[k*4+3]<128)continue;
+    seen.add(k);group.push(k);
+   }
+  }
+  if(group.length>largest.length)largest=group;
+ }
+ const keep=new Set(largest);
+ for(let i=0;i<4096;i++)if(!keep.has(i))data.data[i*4+3]=0;
+ w.putImageData(data,0,0);return c});
+ // Clear the inter-wing gap above the eye, where a clipped wing edge can linger.
+ g.clearRect(0,0,64,20);
+ const bodyPixels=g.getImageData(0,0,64,64),bodyMask=document.createElement('canvas');
+ bodyMask.width=bodyMask.height=64;
+ const maskPixels=new ImageData(new Uint8ClampedArray(bodyPixels.data),64,64);
+ for(let i=3;i<maskPixels.data.length;i+=4)if(maskPixels.data[i])maskPixels.data[i]=255;
+ bodyMask.getContext('2d').putImageData(maskPixels,0,0);
+ // Downstroke opens the membrane; recovery folds the outer wing at the wrist.
+ // Deform the original wing pixels, retaining their palette and nearest-neighbour edges.
+ const poses=[[-.10,1,0],[-.72,1,.08],[-1.48,1,.12],[-1.32,.72,.48],[-.70,.48,.75],[-.20,.72,.38]];
+ function articulatedWing(source,side,pose){
+  const pixels=source.getContext('2d').getImageData(0,0,64,64);
+  const result=new ImageData(64,64),root=side?[46,24]:[28,24],sign=side?-1:1;
+  const [angle,spread,fold]=pose,ca=Math.cos(angle*sign),sa=Math.sin(angle*sign);
+  function vertex(x,y){
+   let dx=x-root[0],dy=y-root[1];
+   // The wrist is above the root. Only the outer membrane folds on recovery.
+   const outer=Math.max(0,(-dx*sign-5)/20);
+   dx=dx*(1-(1-spread)*Math.min(1,outer));dy+=fold*outer*13;
+   return [root[0]+dx*ca-dy*sa,root[1]+dx*sa+dy*ca,x,y];
+  }
+  function triangle(a,b,c){
+   const den=(b[1]-c[1])*(a[0]-c[0])+(c[0]-b[0])*(a[1]-c[1]);
+   if(Math.abs(den)<.001)return;
+   const left=Math.max(0,Math.floor(Math.min(a[0],b[0],c[0]))),right=Math.min(63,Math.ceil(Math.max(a[0],b[0],c[0])));
+   const top=Math.max(0,Math.floor(Math.min(a[1],b[1],c[1]))),bottom=Math.min(63,Math.ceil(Math.max(a[1],b[1],c[1])));
+   for(let y=top;y<=bottom;y++)for(let x=left;x<=right;x++){
+    const u=((b[1]-c[1])*(x+.5-c[0])+(c[0]-b[0])*(y+.5-c[1]))/den;
+    const v=((c[1]-a[1])*(x+.5-c[0])+(a[0]-c[0])*(y+.5-c[1]))/den,w=1-u-v;
+    if(u<-.0001||v<-.0001||w<-.0001)continue;
+    const sx=Math.min(63,Math.max(0,Math.floor(u*a[2]+v*b[2]+w*c[2]))),sy=Math.min(63,Math.max(0,Math.floor(u*a[3]+v*b[3]+w*c[3])));
+    const from=(sy*64+sx)*4,to=(y*64+x)*4;
+    result.data.set(pixels.data.subarray(from,from+4),to);
+   }
+  }
+  for(let y=0;y<64;y+=4)for(let x=0;x<64;x+=4){
+   const a=vertex(x,y),b=vertex(x+4,y),c=vertex(x+4,y+4),d=vertex(x,y+4);
+   triangle(a,b,c);triangle(a,c,d);
+  }
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=64;
+  canvas.getContext('2d').putImageData(result,0,0);return canvas;
+ }
+ // Lift follows the downstroke; the recovery settles gently. Integer pixels keep crisp edges.
+ const bobY=[1,0,-1,-1,0,1];
+ movingFrames.forEach((c,f)=>{
+  const out=c.getContext('2d');out.clearRect(0,0,64,64);out.imageSmoothingEnabled=false;
+  out.save();out.translate(0,bobY[f]);
+  for(const side of [1,0])out.drawImage(articulatedWing(wings[side],side,poses[f]),0,0);
+  // Eye, tail and wing roots share the same vertical offset, without stretching.
+  out.globalCompositeOperation='destination-out';out.drawImage(bodyMask,0,0);
+  out.globalCompositeOperation='source-over';out.drawImage(body,0,0);out.restore();
+ });
+}
+function draw(c,row,f,flip=false,px=0,py=0){c.imageSmoothingEnabled=false;c.save();c.translate(px+(flip?64:0),py);if(flip)c.scale(-1,1);c.drawImage(row===1?movingFrames[f]:buffers[row*6+f],0,0);c.restore()}
+function paint(){if(!ready)return;document.querySelectorAll('.card').forEach((card,row)=>{const f=frame(row,time);card.querySelector('.frame').textContent=`${f+1} / 6`;card.querySelectorAll('canvas').forEach(c=>{const g=c.getContext('2d');g.clearRect(0,0,64,64);draw(g,row,f)})});
+ctx.fillStyle=light?'#eeeadd':'#17232c';ctx.fillRect(0,0,stage.width,224);ctx.fillStyle=light?'#bcc5bc':'#354854';for(let gx=0;gx<stage.width;gx+=32){ctx.fillRect(gx,188,31,4);ctx.fillRect(gx,195,31,28)}
+let row=held?1:0,f=frame(row,time),flip=face<0;
+if(attack>=0&&time-attack<800){row=3;f=attackFrame(time-attack)}else if(turn>=0&&time-turn<750){row=2;f=Math.min(5,Math.floor((time-turn)/125));flip=face>0}
+ctx.fillStyle=light?'#aeb4ad':'#101921';ctx.fillRect(Math.round(x)+19,180,32,3);draw(ctx,row,f,flip,Math.round(x),107);
+ctx.fillStyle=light?'#34454b':'#a5b7bc';ctx.font='13px system-ui';ctx.fillText(['懸停','移動','轉向','甩尾'][row]+' · 64px',20,28);
+}
+function direction(d){if(d!==face){face=d;turn=time}held=d}
+function tick(now){const dt=Math.min(50,last?now-last:0);last=now;if(playing&&ready){time+=dt*rate;if(auto){const phase=time%7200;if(phase<2400)direction(1);else if(phase<3200){held=0;if(attack<0||time-attack>=800)attack=time}else if(phase<5600)direction(-1);else held=0;}if(held&&!(attack>=0&&time-attack<800))x=Math.max(10,Math.min(stage.width-74,x+held*dt*rate*.065));}paint();requestAnimationFrame(tick)}
+function sync(){const b=document.querySelector('#play');b.textContent=playing?'暫停':'播放';b.setAttribute('aria-pressed',playing)}
+document.querySelector('#play').onclick=()=>{playing=!playing;sync()};document.querySelector('#step').onclick=()=>{playing=false;time+=125;sync();paint()};document.querySelector('#speed').onchange=e=>rate=Number(e.target.value);
+document.querySelector('#background').onclick=e=>{light=!light;e.target.textContent=light?'深色背景':'淺色背景';document.querySelectorAll('.big,.actual').forEach(c=>c.style.background=light?'#eeeadd':'');paint()};
+function manual(){auto=false;document.querySelector('#auto').textContent='自動演示：關';document.querySelector('#auto').setAttribute('aria-pressed','false')}
+document.querySelector('#auto').onclick=e=>{auto=!auto;held=0;e.target.textContent=`自動演示：${auto?'開':'關'}`;e.target.setAttribute('aria-pressed',auto)};
+for(const [id,d]of [['left',-1],['right',1]]){const b=document.getElementById(id);b.style.touchAction='none';b.onpointerdown=e=>{manual();b.setPointerCapture(e.pointerId);direction(d)};b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>held=0}
+document.querySelector('#attack').onclick=()=>{manual();held=0;attack=time};
+stage.onkeydown=e=>{if(['ArrowLeft','ArrowRight','a','d',' '].includes(e.key)){e.preventDefault();manual();if(e.key===' '){if(!e.repeat)attack=time}else direction(['ArrowLeft','a'].includes(e.key)?-1:1)}};stage.onkeyup=()=>held=0;
+window.onblur=()=>{held=0;playing=false;sync()};document.addEventListener('visibilitychange',()=>{if(document.hidden){held=0;playing=false;sync()}});
+image.onload=()=>{for(let row=0;row<4;row++)for(let col=0;col<6;col++){const g=buffers[row*6+col].getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(image,col*image.width/6,row*image.height/4,image.width/6,image.height/4,0,0,64,64)}buildMovement();ready=true;document.querySelector('#status').textContent='24 影格已載入';paint()};image.onerror=()=>document.querySelector('#status').textContent='圖稿載入失敗，請以本機伺服器開啟';image.src='sprites.png';sync();requestAnimationFrame(tick);
+</script></html>

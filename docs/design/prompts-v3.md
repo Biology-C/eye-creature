@@ -1,0 +1,10 @@
+# V3 西洋龍膜翼提示詞
+
+使用內建 image_gen 編輯；第一張以 V2 結構圖為來源，第二張以 V2 動作圖及 V3 結構圖為參考。
+
+## 結構圖
+Edit this character structure sheet. Replace EVERY feathered wing in all four views and all lower insets with WESTERN DRAGON REPTILIAN MEMBRANE WINGS. Exactly a PAIR of leathery wings: visible upper arm, elbow, wrist and 3 elongated finger spars stretching taut broad skin panels, scalloped trailing edge between finger tips, small wrist claw. Black ink bones with gray crosshatched membranes, light enough to see internal ribs. NO feathers, no bird silhouette, no fur or individual leaflike spikes. Wings attach at the same rear roots of the eyeball; folded wing folds its spars like a fan, spread wing reveals membranes. Keep eyeball identity, spherical eye, pupil, single smooth pointed long tail, hovering, turnaround layout and labels exactly as reference. No dragon head or torso, scales on eye, horns, legs or feet. Retain black ink sketch on ivory paper. Change title V2 to V3. Bottom dimension inset should depict tapered tail approximately 1.5 eye diameters long. All other content unchanged.
+
+## 動作圖
+Edit image 1 MOTION sheet using image 2 STRUCTURE V3 as the authoritative wing anatomy. Replace ALL bird/feather wings in every action panel with the same pair of Western dragon leathery membrane wings from image 2: angular articulated arm/elbow/wrist, three long finger spars, taut gray crosshatched membranes with scalloped trailing edge, small wrist claw. NO feathers, hair, bird wings or leaflike scales. Adapt membrane wings plausibly for hovering, slow drift, fast flight, braking, ascending/descending, glide and tail sweep; in glide fully spread membranes, in flapping show hinged wings. Keep image 1's layout, seven action labels, eye character identity, all tail poses, single smooth tapered tail, airborne stance, arrows and three sweep phases. Keep black ink on ivory paper, title change MOTION V2 to MOTION V3. Keep two wings, no extra limbs or dragon head. Tail not foot or tentacle, no ground contact. Do not change eye or tail to reptile parts.
+

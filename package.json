@@ -1,0 +1,17 @@
+{
+  "name": "eye-creature",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Eye Creature maze action prototype",
+  "scripts": {
+    "start": "node scripts/server.cjs",
+    "test": "node scripts/test.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "playwright": "1.58.2"
+  },
+  "license": "SEE LICENSE IN LICENSE"
+}

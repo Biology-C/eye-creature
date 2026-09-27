@@ -1,0 +1,45 @@
+Eye Creature Source-Available License 1.0
+Copyright (c) 2026 Biology-C
+
+Project: https://github.com/Biology-C/eye-creature
+
+1. Scope
+This license applies to the original Eye Creature code, documentation and
+artwork in this repository only to the extent Biology-C holds the rights to
+license them. Pre-existing MIT-licensed Mouse Maze material and third-party
+components remain under their own licenses; see THIRD_PARTY_NOTICES.md.
+This license does not revoke or restrict rights granted under those licenses.
+
+2. Limited permission
+You may download, run and study the covered material for personal,
+noncommercial purposes, and make private modifications for such purposes.
+You may share unmodified copies noncommercially if you preserve this license,
+all copyright notices, THIRD_PARTY_NOTICES.md and clear attribution to
+"Eye Creature by Biology-C" with the project URL above.
+
+3. Permission required
+Commercial use, sale, monetized hosting, incorporation into commercial
+products or services, and public distribution or deployment of modified
+versions of the covered material require prior written permission from
+Biology-C. Permission must be explicit; silence is not permission.
+For inquiries, open an issue at the project URL describing the intended use.
+
+4. Attribution and reserved rights
+Do not remove or obscure copyright, license or source-attribution notices.
+No trademark rights or endorsement are granted. Rights not expressly granted
+are reserved. This is a source-available license, not an open-source license.
+
+5. Platform rights and statutory exceptions
+Nothing here limits rights required by GitHub's applicable platform terms
+(such as viewing and forking on GitHub), rights already granted under another
+applicable license, or uses permitted by applicable law without permission.
+The restrictions in section 3 apply subject to these exceptions.
+
+6. Disclaimer
+THE MATERIAL IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE AUTHORS ARE NOT
+LIABLE FOR CLAIMS OR DAMAGES ARISING FROM ITS USE.
+
+The English text above is the operative license. The README provides a
+plain-language summary and does not replace these terms.
