@@ -2,7 +2,10 @@ import {drawSweptSlash} from './slash-vfx.mjs';
 export function createMagic(){return {shots:[],effects:[],ready:0}}
 export function castLight(s,p,time,charged=false){
  if(time<s.ready)return false;
- s.ready=time+.5;const hitTargets=new Set();for(const angle of (!charged&&p.abilities?.spread?[-.24,0,.24]:[0]))s.shots.push({x:p.x,y:p.y,face:p.face,damage:charged?1.5:1,radius:charged?12:4,charged,hitTargets,dx:p.face*Math.cos(angle),dy:Math.sin(angle),travel:0});
+ // The grounded player has an 11px body radius. Lift the 12px charged orb
+ // slightly so it clears the floor, while retaining all wall collision checks.
+ const originY=p.y-(charged?4:0);
+ s.ready=time+.5;const hitTargets=new Set();for(const angle of (!charged&&p.abilities?.spread?[-.24,0,.24]:[0]))s.shots.push({x:p.x,y:originY,face:p.face,damage:charged?1.5:1,radius:charged?12:4,charged,hitTargets,dx:p.face*Math.cos(angle),dy:Math.sin(angle),travel:0});
  s.effects.push({x:p.x+p.face*12,y:p.y,kind:'cast',until:time+.18});return true;
 }
 export function updateMagic(s,dt,time,{solid,targets,hit}){
