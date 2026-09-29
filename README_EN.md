@@ -1,4 +1,4 @@
-> Local development branch: the bear/metamorphosis/slash V2 changes are not published yet. See [specification and validation](docs/bear-metamorphosis-v2.md).
+> Original-version update: ranged bear attacks, threshold summons, playable slime transformation and swept slashes. Includes fixes for the stomp freeze, locked exit collision and grounded charged orbs. See [specification and validation](docs/bear-metamorphosis-v2.md).
 
 # Eye Creature
 
@@ -58,6 +58,6 @@ Latest balance: 20 regular pure slimes, 20 initial birds across 20 zones, and fi
 
 Tap attack near an enemy for slash → spin → forward cross slash (0.32s between swings, 0.85s combo window). At range, release a short press to fire; cooldown is 0.5s. Hold 0.8s and release for one larger projectile dealing 1.5 damage. The spread relic still affects normal shots. Pause, blur and death cancel charging and buffered attacks. Tornadoes now use horizontal green coils and retain two reflections.
 
-## Bear and metamorphosis V2 (local)
+## Bear and metamorphosis V2
 
 The 30-HP bear has aimed ranged volleys and telegraphed stomps. At 75%, 50%, and 20% remaining HP it summons two crystal rats, three slimes, and one large purple slime, once per threshold. Transformation changes the player into a hopping/climbing slime with a contact lunge (Space/A); flight, magic, dash, and breach are unavailable. Collect the grounded mirror dropped by a stomp to recover. Q still reflects birds but cannot bypass the transformation. Death/restart clears summoned enemies, mirrors, and hostile projectiles. The slash preview now offers stage selection, slow playback, and frame scrubbing.
