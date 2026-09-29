@@ -1,5 +1,15 @@
 # Eye Creature
 
+## Try both versions
+
+The original stays on `main`; the exploration rework stays on `feature/first-adventure-rework`. Game code is not merged. The preview adds gaze, wind routes, memories and checkpoint saves; desktop testing only, with mobile deferred.
+
+**[Choose a version](https://biology-c.github.io/eye-creature/versions/)** · [Original maze](https://biology-c.github.io/eye-creature/) · [Exploration preview (desktop)](https://biology-c.github.io/eye-creature/preview/)
+
+[Preview source](https://github.com/Biology-C/eye-creature/tree/feature/first-adventure-rework) · [Deployment notes](docs/PUBLISHING.md)
+
+Please include the version, play time and where you got stuck in feedback. The rest of this README describes the original game.
+
 **[🎮 Play in your browser](https://biology-c.github.io/eye-creature/)**
 
 [繁體中文](README.md) · [Original Mouse Maze](https://github.com/Biology-C/mousemaze)

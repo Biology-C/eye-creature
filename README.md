@@ -1,5 +1,15 @@
 # 眼球怪 Eye Creature
 
+## 兩種版本一起試玩
+
+原版保留在 `main`，探索改造版保留在 `feature/first-adventure-rework`，並未合併新版玩法。新版加入凝視、風道、勇者殘響與休息燈存檔，目前以桌面鍵盤測試為主，手機暫緩。
+
+**[選擇試玩版本](https://biology-c.github.io/eye-creature/versions/)** · [原版迷宮](https://biology-c.github.io/eye-creature/) · [探索改造版（桌面測試）](https://biology-c.github.io/eye-creature/preview/)
+
+[新版原始碼](https://github.com/Biology-C/eye-creature/tree/feature/first-adventure-rework) · [新版玩家說明](https://github.com/Biology-C/eye-creature/blob/feature/first-adventure-rework/docs/design/adventure-player-guide.md) · [發布方式](docs/PUBLISHING.md)
+
+回饋時請註明版本、遊玩時間及卡住的位置。以下內容說明原版。
+
 **[🎮 立即線上試玩](https://biology-c.github.io/eye-creature/)**
 
 [English](README_EN.md) · [原作 Mouse Maze](https://github.com/Biology-C/mousemaze)
