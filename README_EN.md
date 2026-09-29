@@ -1,6 +1,6 @@
 # Eye Creature
 
-**[🎮 Play in your browser](https://biology-c.github.io/eye-creature/)**
+**[🎮 Choose a version](https://biology-c.github.io/eye-creature/versions/)** · [Original maze](https://biology-c.github.io/eye-creature/) · [Exploration preview (desktop)](https://biology-c.github.io/eye-creature/preview/)
 
 [繁體中文](README.md) · [Original Mouse Maze](https://github.com/Biology-C/mousemaze)
 
@@ -8,9 +8,9 @@ A standalone pixel-art action maze prototype. Explore the first level, collect t
 
 Extracted from the Mouse Maze experimental prototype. This repository now owns Eye Creature code, assets, issues and releases; Mouse Maze keeps its original adventure, educational and mechanism modes.
 
-## Local adventure rework
+## Exploration preview
 
-The `feature/first-adventure-rework` branch adds an authored spine with six seeded branches, gaze clues, three wind ducts, combo-cleared obstacles, three memories, desktop HUD/camera improvements and browser-local checkpoint saves. Not deployed yet. Desktop only for this acceptance pass; mobile work is deferred by request. See the [validation record](docs/design/adventure-validation.md).
+The `feature/first-adventure-rework` branch adds an authored spine with six seeded branches, gaze clues, three wind ducts, combo-cleared obstacles, three memories, desktop HUD/camera improvements and browser-local checkpoint saves. Published separately at `/preview/`; the root URL keeps the original `main` game. See [deployment notes](docs/PUBLISHING.md). Desktop only for this acceptance pass; mobile work is deferred by request. See the [validation record](docs/design/adventure-validation.md).
 
 ## Run
 
@@ -20,7 +20,7 @@ Move: arrows or WASD. Up flaps/glides; down drops through platforms. Space autom
 
 Features include jumping crystal rats that transform into slime, shadow birds, melee-only tree fiends, timed spikes, exploration torches, collectibles, healing shards and destructible marked walls/floors/ceilings. Light/dark and reduced-motion settings are supported.
 
-In the local rework, lamps save checkpoints in the same browser. Death preserves current-run progress; reload restores the last lamp snapshot. Starting a new run asks before replacing an existing save. The previously published build has no persistence. The 10–15 minute playtime is a design target, not a guarantee. Later levels and additional magic are not implemented. The first red bear boss prototype now guards the exit (30 HP); trees have 5 HP and shadow birds are capped at six per activated zone.
+In the exploration preview, lamps save checkpoints in the same browser. Death preserves current-run progress; reload restores the last lamp snapshot. Starting a new run asks before replacing an existing save. The previously published build has no persistence. The 10–15 minute playtime is a design target, not a guarantee. Later levels and additional magic are not implemented. The first red bear boss prototype now guards the exit (30 HP); trees have 5 HP and shadow birds are capped at six per activated zone.
 
 ## Test
 
@@ -30,7 +30,7 @@ npx playwright install chromium
 npm test
 ```
 
-The runner starts its own temporary server and runs model checks, browser interactions, mobile layouts and damage-isolated navigation to the boss entrance plus separate boss combat and death checks. Artifacts go to ignored `tests/artifacts/`. Set `BROWSER_CHANNEL=chrome` to use installed Chrome if desired.
+The runner starts its own temporary server and runs model checks, desktop browser interactions and damage-isolated navigation to the boss entrance plus separate boss combat and death checks. Artifacts go to ignored `tests/artifacts/`. Set `BROWSER_CHANNEL=chrome` to use installed Chrome if desired.
 
 See [design history](docs/design/README.md), [migration notes](docs/design/MIGRATION.md) and [asset sources](ASSET_SOURCES.md). Original Eye Creature additions use the [Source-Available License](LICENSE), not an open-source license. Personal noncommercial use and private modification are permitted. Commercial use and public distribution/deployment of modified versions require prior written permission from Biology-C. Unmodified noncommercial copies must preserve attribution and license notices. Previously MIT-licensed Mouse Maze portions retain their original rights; see [scope and exceptions](THIRD_PARTY_NOTICES.md).
 

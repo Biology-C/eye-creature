@@ -1,0 +1,69 @@
+name: Publish both playable versions
+on:
+  workflow_run:
+    workflows: [Test]
+    types: [completed]
+    branches: [main, feature/first-adventure-rework]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-dual-version
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out original version
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: original
+          persist-credentials: false
+      - name: Check out exploration preview
+        uses: actions/checkout@v4
+        with:
+          ref: feature/first-adventure-rework
+          path: exploration
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies for both snapshots
+        run: |
+          npm ci --prefix original
+          npm ci --prefix exploration
+      - name: Install browser
+        working-directory: exploration
+        run: npx playwright install --with-deps chromium
+      - name: Verify original snapshot
+        working-directory: original
+        run: npm test
+      - name: Verify exploration snapshot (desktop)
+        working-directory: exploration
+        run: npm test
+      - name: Assemble both versions
+        run: node original/scripts/build-pages.cjs original exploration _site
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish both versions together
+        id: deployment
+        uses: actions/deploy-pages@v4
