@@ -6,4 +6,6 @@ export function updateTornadoes(shots,dt,{free,player,hurt}){
  if(Math.hypot(b.x-player.x,b.y-player.y)<23){hurt('綠色龍捲風');return false}
  }return true;});
 }
-export function drawTornadoes(g,shots,time,reduced){for(const b of shots){g.save();g.translate(Math.round(b.x),Math.round(b.y));for(let i=0;i<4;i++){const w=6+i*4;g.strokeStyle=i%2?'#c5f7a1':'#69bb79';g.lineWidth=3;g.beginPath();g.ellipse(reduced?0:Math.sin(time*13+i)*2,12-i*8,w,3,0,0,Math.PI*2);g.stroke()}g.restore()}}
+export function drawTornadoes(g,shots,time,reduced){for(const b of shots){
+ g.save();g.translate(Math.round(b.x),Math.round(b.y));g.rotate(Math.atan2(b.dy,b.dx));const phase=reduced?0:time*15;
+ for(let layer=0;layer<2;layer++){g.lineWidth=layer?1.4:4;for(let i=0;i<11;i++){const x=-22+i*4.4,r=6+11*Math.sqrt(Math.max(.1,1-(x/27)**2));g.strokeStyle=layer?(i%3===0?'#e0ff9e':'#7fff46'):'#187c2d';g.beginPath();g.ellipse(x,Math.sin(phase+i*.9)*1.6,3+Math.sin(phase+i)*1.2,r,Math.sin(phase+i*.7)*.18,0,Math.PI*2);g.stroke()}}g.restore();}}

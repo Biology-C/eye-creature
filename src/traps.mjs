@@ -1,5 +1,5 @@
 // Game-time seconds only: pause/blur also freezes the hazard cycle.
-export function spikeState(time){const phase=((time%6)+6)%6;const active=phase>=3;return {phase,active,warning:phase>=2.2&&!active,height:active?Math.round(30*Math.min(1,(phase-3)/.2,(6-phase)/.2)):0,remaining:Math.ceil(active?6-phase:3-phase)}}
+export function spikeState(time){const phase=((time%6)+6)%6;const active=phase>=3;return {phase,active,warning:phase>=2.2&&!active,height:active?Math.round(37.5*Math.min(1,(phase-3)/.2,(6-phase)/.2)):0,remaining:Math.ceil(active?6-phase:3-phase)}}
 export function touchesSpikes(player,trap,time){const s=spikeState(time+(trap.offset||0)),a=trap.angle||0,dx=player.x-trap.x,dy=player.y-trap.y,x=dx*Math.cos(a)+dy*Math.sin(a),y=-dx*Math.sin(a)+dy*Math.cos(a);return s.height>0&&x+11>0&&x-11<trap.w&&y+11>-s.height&&y-11<0}
 // Add sparse pairs: ceiling opposite floor; stagger left/right wall hazards.
 export function addSurfaceSpikes(world){
@@ -12,4 +12,10 @@ export function addSurfaceSpikes(world){
 export function trapSupported(t,solid){const a=t.angle||0;return solid(t.x+Math.cos(a)*t.w/2-Math.sin(a)*2,t.y+Math.sin(a)*t.w/2+Math.cos(a)*2)}
 export function drawSpikes(g,t,time){const s=spikeState(time+(t.offset||0)),color=s.active?'#f1a68b':s.warning?'#f1ce80':'#85c1b4';g.save();g.translate(t.x,t.y);g.rotate(t.angle||0);g.fillStyle='#362d30';g.fillRect(0,-3,t.w,5);g.fillStyle=color;
  for(let x=0;x<t.w;x+=16){if(s.height){g.beginPath();g.moveTo(x+1,0);g.lineTo(x+8,-s.height);g.lineTo(x+15,0);g.fill()}else g.fillRect(x+5,-4,6,3)}g.restore();
+}
+
+export function removeSpikeShelters(world){
+ for(const t of world.traps){const a=t.angle||0,c=Math.cos(a),s=Math.sin(a),corners=[[0,0],[t.w,0],[0,-64],[t.w,-64]].map(([x,y])=>({x:t.x+x*c-y*s,y:t.y+x*s+y*c}));const left=Math.min(...corners.map(p=>p.x)),right=Math.max(...corners.map(p=>p.x)),top=Math.min(...corners.map(p=>p.y)),bottom=Math.max(...corners.map(p=>p.y));
+ const kept=[];for(const p of world.platforms){if(p.y>=top&&p.y<=bottom&&p.x<right&&p.x+p.w>left){if(p.x<left)kept.push({...p,w:left-p.x});if(p.x+p.w>right)kept.push({...p,x:right,w:p.x+p.w-right})}else kept.push(p)}world.platforms.splice(0,world.platforms.length,...kept);
+ }
 }

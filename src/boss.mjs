@@ -1,3 +1,4 @@
+import {MAX_HP} from './health.mjs';
 export function addBossArena(world){
  const top=world.H+2,T=world.T;
  for(let y=world.H;y<top+11;y++)world.map.push(Array(world.W).fill(1));
@@ -7,7 +8,7 @@ export function addBossArena(world){
  for(const x of [240,432,624])world.platforms.push({x,y:(top+6)*T,w:96});
 }
 export function createBoss(world){const a=world.arena;return {x:576,y:a.floor-38,hp:30,maxHp:30,radiusX:34,radiusY:38,active:false,state:'rest',timer:1.5,cycle:0,cursed:false,stun:0,face:-1}}
-export function enterBoss(b,p,a){b.active=true;b.x=576;b.y=a.floor-38;b.state='rest';b.timer=1.5;b.cursed=false;p.x=a.start.x;p.y=a.start.y;p.vy=0;p.wing=.7;p.hp=3;p.dashRemaining=0}
+export function enterBoss(b,p,a){b.active=true;b.x=576;b.y=a.floor-38;b.state='rest';b.timer=1.5;b.cursed=false;p.x=a.start.x;p.y=a.start.y;p.vy=0;p.wing=.7;p.hp=MAX_HP;p.dashRemaining=0}
 export function resetBoss(b){b.active=false;b.cursed=false;if(b.hp>0){b.hp=30;b.state='rest';b.timer=1.5}}
 export function updateBoss(b,p,dt,time,{clear,hurt}){
  if(!b.active||b.hp<=0){b.cursed=false;return}

@@ -14,3 +14,9 @@ The runtime and concept images below were created with OpenAI image generation d
 Wing motion adjustments, light effects, slash arcs and dash effects are rendered in project code. Original Eye Creature additions and artwork, to the extent rights are held, use the root source-available LICENSE. See THIRD_PARTY_NOTICES.md for existing MIT and third-party exceptions. This provenance note does not assert exclusive copyright over generated images.
 
 The first red bear boss is drawn procedurally in src/boss.mjs (stitched red bear silhouette with crystal graft). The three slash candidates in src/magic.mjs are code-rendered comparison prototypes, not copied image assets.
+
+The masonry in src/terrain.mjs is original procedural Canvas artwork inspired by the user-provided stone/brick reference (2026-09-29). No pixels from that screenshot are included. Pure/climbing slimes reuse the existing slime sprites with surface-relative orientation.
+
+The five-segment HP display is original SVG/CSS artwork based on the user-provided pixel heart/bar reference (2026-09-29); the reference image itself is not bundled. Purple large slimes recolor and scale the existing slime sprite.
+
+- Green tornado coils: original procedural Canvas rendering inspired by the user-provided green wind animation reference (2026-09-29); no reference pixels embedded. Combo slash ribbons and charge effects are also procedural.

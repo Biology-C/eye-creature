@@ -10,8 +10,8 @@ assert.equal(collectReward(shards[0],p,.7,20),false);assert.equal(p.healCharge,4
 p.wing=.7;assert.equal(collectReward(shards[1],p,.7,20),true);assert.equal(p.wing,.7);assert.equal(p.healCharge,80);
 collectReward(shards[2],p,.7,21);assert.equal(p.hp,2);assert.equal(p.healCharge,20);assert.equal(shards[2].healed,.5);
 collectReward(shards[3],p,.7,22);collectReward(shards[4],p,.7,23);assert.equal(p.hp,2.5);assert.equal(p.healCharge,0);
-p.healCharge=80;collectReward(shards[5],p,.7,24);assert.equal(p.hp,3);assert.equal(p.healCharge,20);
-p.healCharge=80;collectReward(shards[6],p,.7,25);assert.equal(p.hp,3);assert.equal(p.healCharge,20);assert.equal(shards[6].healed,0);
+p.hp=4.5;p.healCharge=80;collectReward(shards[5],p,.7,24);assert.equal(p.hp,5);assert.equal(p.healCharge,20);
+p.healCharge=80;collectReward(shards[6],p,.7,25);assert.equal(p.hp,5);assert.equal(p.healCharge,20);assert.equal(shards[6].healed,0);
 assert.equal(collectReward(r.find(r=>r.kind==='relic'),p,.7,26),true);assert.equal(p.healCharge,20);
 collectReward(r.find(r=>r.kind==='energy'),p,.7,27);assert.equal(p.healCharge,20);assert.equal(p.energy,1);
 console.log('Rewards: deterministic, once-only, full stamina absorption, 100% half-heart healing, overflow, health cap, separate orange energy passed');

@@ -8,5 +8,5 @@ for(const face of [-1,1]){const p={x:face===1?905:50,y:200,face,wing:.7,vy:0};st
 const r={x:200,y:305.99,face:1,hp:2,state:'walk',timer:0,stun:0,vy:0,a:100,b:500};const target={x:260,y:305.99};let low=r.y,jumped=false,landed=false;
 for(let i=0;i<180;i++){updateRat(r,target,ph,1/120,i/120,()=>true);low=Math.min(low,r.y);jumped ||= r.state==='jump';landed ||= jumped&&r.grounded&&r.state==='rest';}
 assert.ok(jumped&&landed);assert.ok(low<280);assert.ok(r.x>250);
-r.hp=1;r.state='walk';r.x=200;r.y=305.99;r.vy=0;let slimeLow=r.y,slimeLanded=false;for(let i=0;i<180;i++){updateRat(r,target,ph,1/120,3+i/120,()=>true);slimeLow=Math.min(slimeLow,r.y);if(slimeLow<300&&r.grounded)slimeLanded=true}assert.ok(slimeLow<290&&slimeLow>low);assert.ok(slimeLanded);
-console.log('PASS dash physics; rat and slime jump, gravity and land; slime hop lower');
+r.hp=1;r.state='walk';r.x=200;r.y=305.99;r.vy=0;let slimeLow=r.y,slimeLanded=false;for(let i=0;i<180;i++){updateRat(r,target,ph,1/120,3+i/120,()=>true);slimeLow=Math.min(slimeLow,r.y);if(slimeLow<300&&r.grounded)slimeLanded=true}assert.ok((305.99-slimeLow)/(305.99-low)>1.9);assert.ok((305.99-slimeLow)/(305.99-low)<2.15);assert.ok(slimeLanded);
+console.log('PASS dash physics; rat and slime jump, gravity and land; slime jump height doubled');

@@ -1,3 +1,4 @@
+import {MAX_HP} from './health.mjs';
 export const WING_REFILL=.28;
 export function createRewards(world){
  const {graph,position}=world;
@@ -18,8 +19,8 @@ export function collectReward(reward,player,maxWing,time){
  if(reward.kind==='wing'){
   const before=player.wing;player.wing=Math.min(maxWing,player.wing+WING_REFILL);reward.restored=player.wing-before;
   // Absorption uses the shard's nominal 40%, independent of remaining flight stamina.
-  const total=(player.healCharge||0)+40,cycles=Math.floor(total/100),hp=player.hp??3;
-  player.healCharge=total%100;player.hp=Math.min(3,hp+cycles*.5);
+  const total=(player.healCharge||0)+40,cycles=Math.floor(total/100),hp=player.hp??MAX_HP;
+  player.healCharge=total%100;player.hp=Math.min(MAX_HP,hp+cycles*.5);
   reward.healed=player.hp-hp;reward.healCycles=cycles;
  }
  if(reward.kind==='relic'&&reward.ability){player.abilities??={};player.abilities[reward.ability]=true}

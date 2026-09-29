@@ -38,7 +38,7 @@ export function createPhysics(map,T,platforms){
    fall(o,o.vy*step,11,!down);
   }
  }
- function enemy(o,dt){o.vy=Math.min(400,(o.vy||0)+850*dt);fall(o,o.vy*dt,14,false)}
- function walkEnemy(o,dx){const ahead=o.x+dx+Math.sign(dx)*16;if(solid(ahead,o.y)||!solid(ahead,o.y+17))return false;horizontal(o,dx,14);return true}
- return {player,enemy,walkEnemy,solid,moveEnemy:(o,dx)=>horizontal(o,dx,14)};
+ function enemy(o,dt){o.vy=Math.min(400,(o.vy||0)+850*dt);fall(o,o.vy*dt,o.bodyRadius||14,false)}
+ function walkEnemy(o,dx){const ahead=o.x+dx+Math.sign(dx)*((o.bodyRadius||14)+2);if(solid(ahead,o.y)||!solid(ahead,o.y+(o.bodyRadius||14)+3))return false;horizontal(o,dx,o.bodyRadius||14);return true}
+ return {player,enemy,walkEnemy,solid,free,moveSurfaceY:(o,dy)=>{const n=Math.max(1,Math.ceil(Math.abs(dy)/3));for(let i=0;i<n;i++)if(free(o.x,o.y+dy/n,o.bodyRadius||14))o.y+=dy/n;},moveEnemy:(o,dx)=>horizontal(o,dx,o.bodyRadius||14)};
 }
