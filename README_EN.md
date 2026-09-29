@@ -2,9 +2,9 @@
 
 ## Try both versions
 
-The original stays on `main`; the exploration rework stays on `feature/first-adventure-rework`. Game code is not merged. The preview adds gaze, wind routes, memories and checkpoint saves; desktop testing only, with mobile deferred.
+The original stays on `main`; the exploration rework stays on `feature/first-adventure-rework`. Game code is not merged. The preview adds gaze, wind routes, memories and checkpoint saves; desktop controls are preserved and touch devices now use a dedicated green/gray pixel handheld shell (A attack/breach, B flap, X dash).
 
-**[Choose a version](https://biology-c.github.io/eye-creature/versions/)** · [Original maze](https://biology-c.github.io/eye-creature/) · [Exploration preview (desktop)](https://biology-c.github.io/eye-creature/preview/)
+**[Choose a version](https://biology-c.github.io/eye-creature/versions/)** · [Original maze](https://biology-c.github.io/eye-creature/) · [Exploration preview](https://biology-c.github.io/eye-creature/preview/)
 
 [Preview source](https://github.com/Biology-C/eye-creature/tree/feature/first-adventure-rework) · [Deployment notes](docs/PUBLISHING.md)
 
