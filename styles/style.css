@@ -11,3 +11,5 @@
 #dash{min-height:56px;min-width:92px;color:#a6eeee;touch-action:manipulation}@media(max-height:500px) and (orientation:landscape){#dash{position:fixed;left:42px;bottom:130px}}
 
 #magic{min-height:56px;min-width:92px;color:#d3efff;touch-action:manipulation}@media(max-height:500px) and (orientation:landscape){#magic{position:fixed;left:42px;bottom:194px}}
+
+header nav{flex-wrap:wrap}#slash-style{font-size:12px}

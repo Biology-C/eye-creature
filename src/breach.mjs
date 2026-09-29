@@ -42,3 +42,12 @@ export function breakWall(player,wall,map,tileSize,platforms=[]){
  player.energy-=BREACH_COST;wall.broken=true;return true;
 }
 
+export function ordinaryWall(player,world,direction){
+ if(!player.abilities?.breach)return null;
+ const T=world.T,dx=direction==='up'||direction==='down'?0:player.face,dy=direction==='up'?-1:direction==='down'?1:0;
+ for(let d=14;d<=56;d+=4){const tx=Math.floor((player.x+dx*d)/T),ty=Math.floor((player.y+dy*d)/T);if(world.map[ty]?.[tx]!==1)continue;
+ const x=tx+(dx<0?-2:dx===0?-1:0),y=ty+(dy<0?-2:dy===0?-1:0);
+ if(x<2||y<2||x+3>world.W-2||y+3>world.mazeHeight-2)return null;
+ return {id:`ordinary-${x}-${y}`,x:x*T,y:y*T,w:3*T,h:3*T,axis:dy?'vertical':undefined,ordinary:true,broken:false};
+ }return null;
+}

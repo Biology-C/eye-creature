@@ -1,7 +1,7 @@
 export const RUN_SPEED=260,MAX_WING=.7;
 export function startDash(o){
  if((o.dashCooldown||0)>0||(o.dashRemaining||0)>0)return false;
- o.dashRemaining=.18;o.dashCooldown=1.2;o.dashFace=o.face||1;return true;
+ o.dashRemaining=.18;o.dashCooldown=o.abilities?.dash ? .6 : 1.2;o.dashFace=o.face||1;return true;
 }
 export function createPhysics(map,T,platforms){
  const solid=(x,y)=>map[Math.floor(y/T)]?.[Math.floor(x/T)]!==0;

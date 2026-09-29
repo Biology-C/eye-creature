@@ -12,3 +12,5 @@ The runtime and concept images below were created with OpenAI image generation d
 | docs/design/enemies/*.png | Enemy concept history; adjacent prompt records |
 
 Wing motion adjustments, light effects, slash arcs and dash effects are rendered in project code. Original Eye Creature additions and artwork, to the extent rights are held, use the root source-available LICENSE. See THIRD_PARTY_NOTICES.md for existing MIT and third-party exceptions. This provenance note does not assert exclusive copyright over generated images.
+
+The first red bear boss is drawn procedurally in src/boss.mjs (stitched red bear silhouette with crystal graft). The three slash candidates in src/magic.mjs are code-rendered comparison prototypes, not copied image assets.
