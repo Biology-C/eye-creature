@@ -23,3 +23,5 @@ The five-segment HP display is original SVG/CSS artwork based on the user-provid
 
 
 - 原版手機掌機介面：移植同專案探索分支的原創 CSS 像素按鍵與綠灰調色；場景鏡面為原創 Canvas 繪製，未嵌入參考照片。
+
+- Bear/metamorphosis V2: user-provided slash sheets inform sweep trajectories only; the ape-like sprite sheet informs broad attack poses only. Reference characters/pixels are not included. New tapered slash ribbons (src/slash-vfx.mjs), crimson bear poses and dropped mirrors (src/boss.mjs) are original procedural Canvas drawings. Player slime form reuses the existing licensed project slime atlas.

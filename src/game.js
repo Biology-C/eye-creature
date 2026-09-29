@@ -1,9 +1,10 @@
+import {setSlimeForm,startSlimeAttack,updateSlimePlayer} from './player-form.mjs';
 import {BREACH_HOLD,nearbyTouchSideWall,attackIntent,validBreachHold,bindTouchControls,createSceneMirrors,drawSceneMirrors} from './handheld.mjs';
 import {MAX_HP,healthMarkup,criticalOpacity} from './health.mjs';
 import {createPureSlimes,createBigSlimes,splitSlime,isSlime} from './slime.mjs';
 import {drawTerrain} from './terrain.mjs';
 import {drawTornadoes} from './tornado.mjs';
-import {addBossArena,createBoss,enterBoss,resetBoss,updateBoss,drawBear} from './boss.mjs';
+import {addBossArena,createBoss,enterBoss,resetBoss,updateBoss,drawBear,drawBossEffects,drawBossTelegraph,bossSummons,BOSS_ATTACK_LABELS} from './boss.mjs';
 import {inMelee} from './combat.mjs';
 import {createMagic,castLight,updateMagic,drawEffects,drawSlash,SLASH_STYLES} from './magic.mjs';
 import {updateRat} from './rats.mjs';
@@ -26,9 +27,9 @@ const solid=(x,y)=>map[Math.floor(y/T)]?.[Math.floor(x/T)]!==0;
 const keys=new Set(),seen=new Set();let drawHero,ratImage,faunaImage,faunaFrames=[],enemyFrames=[],mode='loading',time=0,last=0,camera={x:0,y:0},light=false,reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let dashHits=new Set(),boss=createBoss(world),slashStyle=0,struck=new Set(),hitStop=0,hurtUntil=0,magic=createMagic(),dashTrail=[],fauna,player,rats,lights,rewards,torches,crackedWalls,pickupFlash,checkpoint,activated,kills,deaths,noticeUntil=0,attackUntil=0,nextAttack=0,slash=null;
 let attackHeld=false,chargeStart=null,comboStage=0,comboUntil=0,comboQueue=0,breachHold=null,breachConsumed=false;
-let clearTouch=()=>{},sceneMirrors=[];
+let clearTouch=()=>{},sceneMirrors=[],slimeHits=new Set();
 function cancelAttackInput(){breachHold=null;breachConsumed=false;attackHeld=false;chargeStart=null;comboStage=0;comboUntil=0;comboQueue=0;keys.delete("attack")}
-function reset(){clearTouch();cancelAttackInput();dashHits.clear();boss=createBoss(world);struck.clear();hitStop=0;hurtUntil=0;magic=createMagic();dashTrail=[];world.platforms.splice(0,world.platforms.length,...originalPlatforms.map(p=>({...p})));map.forEach((row,y)=>row.splice(0,row.length,...originalMap[y]));fauna=createFauna(world);sceneMirrors=handheld?createSceneMirrors(world,fauna.zones):[];crackedWalls=createCrackedWalls(world);player={...world.start,hp:MAX_HP,abilities:{},healCharge:0,dashRemaining:0,dashCooldown:0,energy:0,face:1,inv:0,vy:0,wing:MAX_WING,grounded:false};rats=[...world.rats,...createPureSlimes(world),...createBigSlimes(world)].map((r,i)=>({...r,spawn:r.x,y0:r.y,face:i%2?-1:1,hp:r.big?3:r.pure?1:2,surface:null,state:'walk',timer:0,stun:0,vy:0}));lights=world.lights.map(l=>({...l,got:false}));rewards=createRewards(world);torches=createTorches(world);pickupFlash=null;checkpoint={...world.start};activated=new Set();kills=0;deaths=0;time=0;nextAttack=0;attackUntil=0;slash=null;seen.clear();keys.clear();updateHud()}
+function reset(){clearTouch();cancelAttackInput();dashHits.clear();boss=createBoss(world);struck.clear();hitStop=0;hurtUntil=0;magic=createMagic();dashTrail=[];world.platforms.splice(0,world.platforms.length,...originalPlatforms.map(p=>({...p})));map.forEach((row,y)=>row.splice(0,row.length,...originalMap[y]));fauna=createFauna(world);sceneMirrors=handheld?createSceneMirrors(world,fauna.zones):[];crackedWalls=createCrackedWalls(world);player={...world.start,hp:MAX_HP,abilities:{},healCharge:0,dashRemaining:0,dashCooldown:0,energy:0,face:1,inv:0,vy:0,wing:MAX_WING,grounded:false};rats=[...world.rats,...createPureSlimes(world),...createBigSlimes(world)].map((r,i)=>({...r,spawn:r.x,y0:r.y,face:i%2?-1:1,hp:r.big?3:r.pure?1:2,surface:null,state:'walk',timer:0,stun:0,vy:0}));lights=world.lights.map(l=>({...l,got:false}));rewards=createRewards(world);torches=createTorches(world);pickupFlash=null;checkpoint={...world.start};activated=new Set();kills=0;deaths=0;time=0;nextAttack=0;attackUntil=0;slash=null;seen.clear();keys.clear();updateHud();updateFormControls()}
 function phoneText(message){return !handheld?message:message.replaceAll('Space','A').replaceAll('Shift','X').replaceAll('按住 ↑ 拍翼','按住 B 拍翼').replaceAll('↑ 拍翼','B 拍翼').replaceAll('按 E 打通','長按 A 打通').replaceAll('按 Q 使用鏡面','靠近場景鏡面').replaceAll('按 Q 映出鏡像','靠近場景鏡面映出鏡像').replaceAll('用 Q 或左側鏡子破解','靠近左側鏡子破解')}
 function say(message,duration=4){$('#notice').textContent=phoneText(message);noticeUntil=time+duration}
 function updateHud(){$('#abilities').textContent='能力：'+(['spread','dash','breach'].filter(k=>player.abilities[k]).map(k=>({spread:'三向光彈',dash:'傷害衝刺',breach:'普通牆破壞'})[k]).join('／')||'尚未取得');$('#energy').textContent=`${handheld?'破牆':'破牆能量'} ${player.energy} / ${BREACH_COST}`;$('#hearts').innerHTML=healthMarkup(player.hp);$('#healing').textContent=`藍能回血 ${player.healCharge}% / 100%`;$('#hearts').setAttribute('aria-label',`生命 ${player.hp} / ${MAX_HP}`);$('#quest').textContent=`${handheld?'光點':'引路光點'} ${lights.filter(p=>p.got).length} / 3`;$('#relics').textContent=`藏品 ${rewards.filter(r=>r.kind==='relic'&&r.got).length} / ${rewards.filter(r=>r.kind==='relic').length}`}
@@ -54,15 +55,15 @@ if(handheld){
  $('#phone-hint').onclick=()=>{resume();$('#hint').click()};
 }
 
-function wallTarget(touch=false){const direction=keys.has('down')?'down':keys.has(touch?'lookUp':'up')?'up':null;return nearbyWall(player,crackedWalls,direction)||(touch&&nearbyTouchSideWall(player,crackedWalls,direction))||ordinaryWall(player,world,direction)}
+function wallTarget(touch=false){if(player.slimeForm)return null;const direction=keys.has('down')?'down':keys.has(touch?'lookUp':'up')?'up':null;return nearbyWall(player,crackedWalls,direction)||(touch&&nearbyTouchSideWall(player,crackedWalls,direction))||ordinaryWall(player,world,direction)}
 function performBreach(wall){if(!breakWall(player,wall,map,T,world.platforms))return false;if(wall.ordinary)crackedWalls.push(wall);wall.discovered=true;updateHud();say('消耗 30 點能量，牆面破開！捷徑已打通。',4);return true}
-function breach(){if(mode!=='playing')return;canvas.focus();const wall=wallTarget();if(!wall){say('靠近裂面：左右面向它，上下按住 ↑／↓ 再按 E 或破牆。',3);return}if(!performBreach(wall))say(`還差 ${BREACH_COST-player.energy} 點破牆能量。`,3)}
+function breach(){if(mode!=='playing'||player.slimeForm)return;canvas.focus();const wall=wallTarget();if(!wall){say('靠近裂面：左右面向它，上下按住 ↑／↓ 再按 E 或破牆。',3);return}if(!performBreach(wall))say(`還差 ${BREACH_COST-player.energy} 點破牆能量。`,3)}
 $('#breach').onclick=breach;
-function mirror(){if(mode!=='playing')return;canvas.focus();const count=mirrorFauna(fauna,player,time,clearPath);if(count>=0&&boss.cursed){boss.cursed=false;say('鏡面破解認知顛倒！',3);return}if(count>=0)say(count?`鏡面映出 ${count} 隻青影鳥，牠們正在攻擊自己的倒影！`:'鏡面展開，附近沒有青影鳥。',3)}
+function mirror(){if(mode!=='playing')return;if(boss.cursed){say('史萊姆無法施法；等紅熊重踏後，拾取掉落的鏡子。',4);return}canvas.focus();const count=mirrorFauna(fauna,player,time,clearPath);if(count>=0)say(count?`鏡面映出 ${count} 隻青影鳥，牠們正在攻擊自己的倒影！`:'鏡面展開，附近沒有青影鳥。',3)}
 $('#mirror').onclick=mirror;
-function dash(){if(mode!=='playing')return;canvas.focus();const direction=Number(keys.has('right'))-Number(keys.has('left'));if(direction)player.face=direction;if(startDash(player))dashHits.clear()}
+function dash(){if(mode!=='playing'||player.slimeForm)return;canvas.focus();const direction=Number(keys.has('right'))-Number(keys.has('left'));if(direction)player.face=direction;if(startDash(player))dashHits.clear()}
 $('#dash').onclick=dash;
-function lightMagic(){if(mode!=='playing')return;canvas.focus();say('目前魔法：光彈。取得其他魔法後，按 F 切換。',3)}
+function lightMagic(){if(mode!=='playing')return;if(player.slimeForm){say('史萊姆形態：跳躍與跳撞，拾取鏡子後恢復魔法。',3);return}canvas.focus();say('目前魔法：光彈。取得其他魔法後，按 F 切換。',3)}
 $('#magic').onclick=lightMagic;
 const keyMap={ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',ArrowUp:'up',w:'up',ArrowDown:'down',s:'down',' ':'attack'};
 window.addEventListener('keydown',e=>{if(e.target.tagName==='BUTTON')return;if(e.key.toLowerCase()==='f'&&!e.repeat){e.preventDefault();lightMagic()}if(e.key==='Shift'&&!e.repeat){e.preventDefault();dash()}if(e.key.toLowerCase()==='q'&&!e.repeat){e.preventDefault();mirror()}if(e.key.toLowerCase()==='e'&&!e.repeat){e.preventDefault();breach()}const k=keyMap[e.key];if(k){e.preventDefault();if(mode==='playing'){if(k==='attack'&&!e.repeat)pressAttack();keys.add(k)}}if(e.key.toLowerCase()==='p'&&!e.repeat)pause()});
@@ -83,20 +84,41 @@ function applyMelee(){
  kills+=hit.killed;if(hit.felled)say('樹妖倒下，驚出了青影鳥！按 Q 使用鏡面。',4);
  for(const r of rats.filter(e=>targets.includes(e))){r.hp=Math.max(0,r.hp-1);r.state='rest';r.timer=.7;r.stun=time+.6;if(r.hp===1&&!r.pure&&!r.big)say('水晶碎開，老鼠變成綠色史萊姆！',2);if(!r.hp)kills++}
 }
-function attack(stage=1){nextAttack=time+.32;attackUntil=time+.30;slash={x:player.x,y:player.y,face:player.face,stage};struck.clear();applyMelee()}
+function attack(stage=1){if(player.slimeForm){slimeAttack();return}nextAttack=time+.32;attackUntil=time+.30;slash={x:player.x,y:player.y,face:player.face,stage};struck.clear();applyMelee()}
 function nearEnemy(){return [...rats,...fauna.trees,...fauna.birds,...(boss.active?[boss]:[])].some(e=>inMelee(player,e,clearPath))}
 function nextCombo(){comboStage=time<=comboUntil?comboStage%3+1:1;comboUntil=time+.85;attack(comboStage)}
-function pressAttack(touch=false){if(mode!=='playing'||attackHeld)return;attackHeld=true;
+function pressAttack(touch=false){if(mode!=='playing'||attackHeld)return;attackHeld=true;if(player.slimeForm){slimeAttack();return}
  if(touch&&handheld&&attackIntent({melee:nearEnemy(),combo:comboStage&&time<=comboUntil,wall:wallTarget(true),energy:player.energy,cost:BREACH_COST})==='breach'){breachHold={id:wallTarget(true).id,start:time};breachConsumed=false;chargeStart=null;return}
  if(nearEnemy()||(comboStage&&time<=comboUntil)){if(time>=nextAttack)nextCombo();else comboQueue=Math.min(2,comboQueue+1)}
  else if(time>=nextAttack&&time>=magic.ready)chargeStart=time;
 }
 function releaseAttack(){if(!attackHeld)return;attackHeld=false;if(breachHold||breachConsumed){const quick=breachHold&&!breachConsumed;breachHold=null;breachConsumed=false;if(quick&&mode==='playing'&&castLight(magic,player,time,false))nextAttack=time+.5;return}if(mode==='playing'&&chargeStart!==null){if(castLight(magic,player,time,time-chargeStart>=.8))nextAttack=time+.5}chargeStart=null}
-function autoAttack(){if(nearEnemy())attack();else if(castLight(magic,player,time))nextAttack=time+.5}
-function hurt(source='老鼠',damage=1){if(time<player.inv)return;if(breachHold){breachHold=null;breachConsumed=true}hurtUntil=time+.35;hitStop=Math.max(hitStop,.07);magic.effects.push({x:player.x,y:player.y,kind:'hurt',damage,until:time+.24});player.hp=Math.max(0,player.hp-damage);player.inv=time+1.5;updateHud();if(player.hp<=0){clearTouch();deaths++;cancelAttackInput();resetBoss(boss);magic=createMagic();dashTrail=[];resetFaunaAfterDeath(fauna);player.x=checkpoint.x;player.y=checkpoint.y;player.hp=MAX_HP;player.vy=0;player.dashRemaining=0;player.dashCooldown=0;player.wing=MAX_WING;player.grounded=false;player.inv=time+2;attackUntil=0;slash=null;for(const r of rats)if(r.hp){r.x=r.spawn;r.y=r.y0;r.state='walk';r.surface=null;r.crawlDown=false;r.timer=0;r.stun=0;r.vy=0}say('回到休息燈旁，生命補滿。已找到的光點保留。',5);updateHud()}else say(source==='針刺'?'碰到針刺了！看地面倒數，收起後再通過。':'被敵人碰到了！暫時不會再受傷。',2)}
-function beginBoss(){clearTouch();cancelAttackInput();if(new URLSearchParams(location.search).has('boss-preview'))document.querySelector('h1 span').textContent='紅熊試玩';enterBoss(boss,player,world.arena);checkpoint={...world.exit};magic=createMagic();fauna.mirrorReady=time;attackUntil=0;slash=null;keys.clear();updateHud();say('紅熊守住出口！30 點生命；紅框時閃避，認知顛倒用 Q 或左側鏡子破解。',8)}
-function update(dt){time+=dt;const dashStart={x:player.x,y:player.y},wasDashing=player.dashRemaining>0;const dx=Number(keys.has('right'))-Number(keys.has('left'));if(dx)player.face=dx;if(player.dashRemaining>0)dashTrail.push({x:player.x,y:player.y,face:player.dashFace,until:time+.18});
-physics.player(player,keys,dt);
+function autoAttack(){if(player.slimeForm){slimeAttack();return}if(nearEnemy())attack();else if(castLight(magic,player,time))nextAttack=time+.5}
+function syncForm(){
+ if(!setSlimeForm(player,boss.active&&boss.hp>0&&boss.cursed))return;
+ clearTouch();keys.clear();cancelAttackInput();attackUntil=0;slash=null;magic.shots=[];dashTrail=[];slimeHits.clear();
+ if(!player.slimeForm){player.bodyRadius=undefined;player.wing=MAX_WING}
+ updateFormControls();
+}
+function updateFormControls(){
+ if(handheld){$('#flap').innerHTML=player.slimeForm?'B<small>跳躍／攀附</small>':'B<small>拍翼</small>';$('#flap').setAttribute('aria-label',player.slimeForm?'B 跳躍或攀附':'B 拍翼或滑翔');$('#dash').disabled=Boolean(player.slimeForm);$('#dash').innerHTML=player.slimeForm?'X<small>變身中</small>':'X<small>衝刺</small>'}else $('#dash').textContent=player.slimeForm?'史萊姆無衝刺':'衝刺 Shift'
+}
+function slimeAttack(){if(startSlimeAttack(player)){slimeHits.clear();nextAttack=time+.55}}
+function applySlimeHit(){
+ if(!player.slimeForm||player.slimeAttack<=0)return;
+ for(const e of [...rats,...(boss.active?[boss]:[])]){
+  if(!e.hp||slimeHits.has(e)||Math.abs(e.x-player.x)>(e.radiusX||14)+20||Math.abs(e.y-player.y)>(e.radiusY||14)+16||!clearPath(player.x,player.y,e.x,e.y))continue;
+  slimeHits.add(e);impact(e);e.hp=Math.max(0,e.hp-1);e.stun=time+.6;if(e!==boss){e.state='rest';e.timer=.7}if(!e.hp)kills++;
+ }
+}
+function finishBoss(){
+ if(!boss.active||boss.hp>0)return;
+ boss.cursed=false;boss.shots=[];boss.mirrors=[];rats=rats.filter(r=>!r.bossMinion);syncForm();
+}
+function hurt(source='老鼠',damage=1){if(time<player.inv)return;if(breachHold){breachHold=null;breachConsumed=true}hurtUntil=time+.35;hitStop=Math.max(hitStop,.07);magic.effects.push({x:player.x,y:player.y,kind:'hurt',damage,until:time+.24});player.hp=Math.max(0,player.hp-damage);player.inv=time+1.5;updateHud();if(player.hp<=0){clearTouch();deaths++;cancelAttackInput();resetBoss(boss);syncForm();rats=rats.filter(r=>!r.bossMinion);magic=createMagic();dashTrail=[];resetFaunaAfterDeath(fauna);player.x=checkpoint.x;player.y=checkpoint.y;player.hp=MAX_HP;player.vy=0;player.dashRemaining=0;player.dashCooldown=0;player.wing=MAX_WING;player.grounded=false;player.inv=time+2;attackUntil=0;slash=null;for(const r of rats)if(r.hp){r.x=r.spawn;r.y=r.y0;r.state='walk';r.surface=null;r.crawlDown=false;r.timer=0;r.stun=0;r.vy=0}say('回到休息燈旁，生命補滿。已找到的光點保留。',5);updateHud()}else say(source==='針刺'?'碰到針刺了！看地面倒數，收起後再通過。':'被敵人碰到了！暫時不會再受傷。',2)}
+function beginBoss(){clearTouch();cancelAttackInput();rats=rats.filter(r=>!r.bossMinion);if(new URLSearchParams(location.search).has('boss-preview'))document.querySelector('h1 span').textContent='紅熊試玩';enterBoss(boss,player,world.arena);syncForm();checkpoint={...world.exit};magic=createMagic();fauna.mirrorReady=time;attackUntil=0;slash=null;keys.clear();updateHud();say('紅熊 30 HP：避開吐息瞄準線，跳過重踏震波。變身後等重踏掉落鏡子，再拾取恢復！',8)}
+function update(dt){time+=dt;syncForm();const dashStart={x:player.x,y:player.y},wasDashing=player.dashRemaining>0;const dx=Number(keys.has('right'))-Number(keys.has('left'));if(dx)player.face=dx;if(player.dashRemaining>0)dashTrail.push({x:player.x,y:player.y,face:player.dashFace,until:time+.18});
+if(player.slimeForm)updateSlimePlayer(player,keys,dt,physics);else physics.player(player,keys,dt);applySlimeHit();
 if(breachHold){const target=wallTarget(true);if(!validBreachHold(breachHold,target,nearEnemy(),player.energy,BREACH_COST)){breachHold=null;breachConsumed=true;say('破牆取消；能量保留。',1.5)}else if(time-breachHold.start>=BREACH_HOLD){performBreach(target);breachHold=null;breachConsumed=true}}dashTrail=dashTrail.filter(t=>t.until>time).slice(-10);
 if(wasDashing&&player.abilities.dash){for(const e of [...rats,...fauna.birds,...(boss.active?[boss]:[])]){const rx=e.radiusX||20,ry=e.radiusY||18;if(!e.hp||dashHits.has(e)||e.x<Math.min(dashStart.x,player.x)-rx-11||e.x>Math.max(dashStart.x,player.x)+rx+11||Math.abs(e.y-player.y)>ry+11||!clearPath(player.x,player.y,e.x,e.y))continue;dashHits.add(e);impact(e);e.hp=Math.max(0,e.hp-1);e.stun=time+.6;if(rats.includes(e)){e.state='rest';e.timer=.7}if(!e.hp)kills++}}
 if(comboQueue&&time>=nextAttack){comboQueue--;nextCombo()}
@@ -109,13 +131,19 @@ updateMagic(magic,dt,time,{solid,targets:[...rats,...fauna.birds,...(boss.active
  if(!e.hp)kills++;
 }});
 $('#magic').textContent=chargeStart===null?'光彈 · F 切換':time-chargeStart>=.8?'蓄力完成 · 放開發射':`蓄力 ${Math.min(100,Math.floor((time-chargeStart)/.8*100))}%`;
-for(const r of [...rats]){const children=splitSlime(r,free);for(const child of children){child.stun=time+.6;struck.add(child);dashHits.add(child);for(const shot of magic.shots)shot.hitTargets?.add(child)}rats.push(...children)}
-for(const r of rats){if(!r.hp)continue;updateRat(r,player,physics,dt,time,clearPath);
+for(const r of [...rats]){const children=splitSlime(r,free);for(const child of children){if(r.bossMinion){child.bossMinion=true;child.id=`${r.id}-child-${rats.length}`;}child.stun=time+.6;struck.add(child);dashHits.add(child);for(const shot of magic.shots)shot.hitTargets?.add(child)}rats.push(...children)}
+finishBoss();for(const r of rats){if(!r.hp)continue;updateRat(r,player,physics,dt,time,clearPath);
 if(time>=r.stun&&Math.abs(player.x-r.x)<(r.bodyRadius||14)+13&&Math.abs(player.y-r.y)<(r.bodyRadius||14)+10)hurt(r.big?'紫色大史萊姆':'老鼠',r.big?2:1);}
-if(handheld){$('#dash').innerHTML=`X<small>${player.dashCooldown>0?player.dashCooldown.toFixed(1)+'s':'衝刺'}</small>`;$('#dash').dataset.ready=player.dashCooldown<=0}else $('#dash').textContent=player.dashCooldown>0?`衝刺 ${player.dashCooldown.toFixed(1)}s`:'衝刺 Shift';
+if(handheld){$('#dash').innerHTML=player.slimeForm?'X<small>變身中</small>':`X<small>${player.dashCooldown>0?player.dashCooldown.toFixed(1)+'s':'衝刺'}</small>`;$('#dash').dataset.ready=player.dashCooldown<=0}else $('#dash').textContent=player.slimeForm?'史萊姆無衝刺':player.dashCooldown>0?`衝刺 ${player.dashCooldown.toFixed(1)}s`:'衝刺 Shift';
 
 if(handheld&&time>=fauna.mirrorReady){const m=sceneMirrors.find(m=>Math.hypot(m.x-player.x,m.y-player.y)<40&&clearPath(player.x,player.y,m.x,m.y));if(m&&fauna.birds.some(b=>b.hp&&b.mode!=='mirror'&&Math.hypot(b.x-m.x,b.y-m.y)<=180&&clearPath(m.x,m.y,b.x,b.y))){const count=mirrorFauna(fauna,m,time,clearPath);if(count>0)say(`場景鏡面映出了 ${count} 隻青影鳥！`,3)}}
-kills+=updateFauna(fauna,player,time,dt,{clear:clearPath,free,hurt,visible:b=>{const cx=Math.max(0,Math.min(W*T-canvas.width,player.x-canvas.width*.38)),cy=Math.max(0,Math.min(H*T-canvas.height,player.y-canvas.height*.52));return b.x>=cx&&b.x<=cx+canvas.width&&b.y>=cy&&b.y<=cy+canvas.height}});updateBoss(boss,player,dt,time,{clear:clearPath,hurt});if(boss.active&&boss.cursed&&Math.hypot(player.x-world.arena.mirror.x,player.y-world.arena.mirror.y)<40){boss.cursed=false;say('碰到鏡子，認知顛倒解除！',3)}$('#mirror').textContent=time>=fauna.mirrorReady?'鏡面 Q':`鏡面 ${Math.ceil(fauna.mirrorReady-time)}s`;
+kills+=updateFauna(fauna,player,time,dt,{clear:clearPath,free,hurt,visible:b=>{const cx=Math.max(0,Math.min(W*T-canvas.width,player.x-canvas.width*.38)),cy=Math.max(0,Math.min(H*T-canvas.height,player.y-canvas.height*.52));return b.x>=cx&&b.x<=cx+canvas.width&&b.y>=cy&&b.y<=cy+canvas.height}});updateBoss(boss,player,dt,time,{
+ clear:clearPath,solid,hurt,
+ summon:(kinds,i)=>{const minions=bossSummons(boss,player,kinds,rats.filter(r=>r.bossMinion&&r.hp>0).length);for(const r of minions)r.stun=time+1;rats.push(...minions);say(`紅熊剩餘 ${[75,50,20][i]}% 生命：召喚援軍！`,3)},
+ curse:()=>say(handheld?'變成史萊姆！B 跳躍／攀附、A 跳撞；等重踏掉落鏡子。':'變成史萊姆！↑ 跳躍／攀附、Space 跳撞；等重踏掉落鏡子。',6),
+ mirrorDrop:()=>say('重踏震落了鏡子！跳過震波，走近鏡子恢復。',4),
+ cured:()=>say('鏡子映出真正的你，飛行與魔法恢復！',4)
+});syncForm();$('#mirror').textContent=time>=fauna.mirrorReady?'鏡面 Q':`鏡面 ${Math.ceil(fauna.mirrorReady-time)}s`;
 for(const trap of world.traps)if(trapSupported(trap,solid)&&touchesSpikes(player,trap,time)){hurt('針刺');break}
 for(const reward of rewards)if(!reward.got&&Math.hypot(player.x-reward.x,player.y-reward.y)<26&&clearPath(player.x,player.y,reward.x,reward.y)&&collectReward(reward,player,MAX_WING,time)){
  pickupFlash={x:reward.x,y:reward.y,until:time+.7,kind:reward.kind,healed:reward.healed||0,percent:Math.round((reward.restored||0)/MAX_WING*100)};updateHud();say(reward.kind==='energy'?`破牆能量 +1（${player.energy}/${BREACH_COST}）${player.energy>=BREACH_COST?'，可以打破裂牆！':''}`:reward.kind==='wing'?`藍能 +40%・翼能 +${Math.round(reward.restored/MAX_WING*100)}%${reward.healed?'・回復半顆心！':reward.healCycles?'・生命已滿':''}（回血進度 ${player.healCharge}%）`:`找到藏品：${reward.name}。能力已解鎖，本次冒險持續有效。`,reward.kind==='wing'?2:4);
@@ -126,8 +154,8 @@ if(!boss.active&&Math.hypot(player.x-world.exit.x,player.y-world.exit.y)<42){if(
 if(boss.active&&!boss.hp&&Math.hypot(player.x-world.arena.exit.x,player.y-world.arena.exit.y)<42){mode='won';clearTouch();cancelAttackInput();keys.clear();panel('第一關完成！',`擊敗紅熊，逃出培養所！探索 ${Math.floor(time/60)} 分 ${Math.floor(time%60)} 秒，擊退 ${kills} 隻敵人，返回 ${deaths} 次；藏品 ${rewards.filter(r=>r.kind==='relic'&&r.got).length}/3。`,'再玩一次')}
 discoverTorches(torches,player,clearPath);
 const cx=Math.floor(player.x/T),cy=Math.floor(player.y/T);for(let y=cy-4;y<=cy+4;y++)for(let x=cx-6;x<=cx+6;x++)if(map[y]?.[x]===0)seen.add(`${x},${y}`);
-if(handheld){const intent=attackIntent({melee:nearEnemy()||(comboStage>0&&time<=comboUntil),combo:false,wall:wallTarget(true),energy:player.energy,cost:BREACH_COST});$('.attack').dataset.intent=intent;$('.attack small').textContent=breachHold?Math.floor((time-breachHold.start)/BREACH_HOLD*100)+'%':intent==='breach'?'長按破牆':chargeStart!==null?'蓄力':'攻擊';if(breachHold)$('#notice').textContent=`破牆蓄力 ${Math.min(100,Math.floor((time-breachHold.start)/BREACH_HOLD*100))}% · 放開可取消`;else if(time>noticeUntil)$('#notice').textContent=intent==='breach'?'靠近裂牆 · 長按 A 破牆（30 能量）':'十字鍵移動／觀察 · B 拍翼 · A 攻擊 · X 衝刺'}
-else if(time>noticeUntil){$('#notice').textContent='← → 移動 · ↑ 拍翼／滑翔 · ↓ 降落穿過薄台 · Space 連按接招／長按蓄力 · Shift 衝刺 · F 切換魔法 · E 破牆 · Q 鏡面'}
+if(handheld){const intent=attackIntent({melee:nearEnemy()||(comboStage>0&&time<=comboUntil),combo:false,wall:wallTarget(true),energy:player.energy,cost:BREACH_COST});$('.attack').dataset.intent=intent;$('.attack small').textContent=player.slimeForm?'跳撞':breachHold?Math.floor((time-breachHold.start)/BREACH_HOLD*100)+'%':intent==='breach'?'長按破牆':chargeStart!==null?'蓄力':'攻擊';if(breachHold)$('#notice').textContent=`破牆蓄力 ${Math.min(100,Math.floor((time-breachHold.start)/BREACH_HOLD*100))}% · 放開可取消`;else if(time>noticeUntil)$('#notice').textContent=player.slimeForm?'史萊姆 · B 跳躍／攀附 · A 跳撞 · 找掉落的鏡子':intent==='breach'?'靠近裂牆 · 長按 A 破牆（30 能量）':'十字鍵移動／觀察 · B 拍翼 · A 攻擊 · X 衝刺'}
+else if(time>noticeUntil){$('#notice').textContent=player.slimeForm?'← → 移動 · ↑ 跳躍／攀附 · ↓ 放開攀附 · Space 跳撞 · 拾取鏡子恢復':'← → 移動 · ↑ 拍翼／滑翔 · ↓ 降落穿過薄台 · Space 連按接招／長按蓄力 · Shift 衝刺 · F 切換魔法 · E 破牆 · Q 鏡面'}
 }
 function rect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),w,h)}
 function text(t,x,y,c='#c5d9c5',size=13){g.fillStyle=c;g.font=`${size}px system-ui`;g.fillText(t,Math.round(x),Math.round(y))}
@@ -165,21 +193,22 @@ if(time<fauna.mirrorUntil){g.strokeStyle='#bceefa';g.lineWidth=3;g.strokeRect(pl
 for(const r of rats){if(!r.hp)continue;const f=r.state==='ready'?2:(r.state==='dash'||r.state==='jump')?3:Math.floor(time*7)%2;g.save();g.translate(Math.round(r.x),Math.round(r.y));if(r.surface==='right')g.rotate(-Math.PI/2);else if(r.surface==='left')g.rotate(Math.PI/2);else if(r.surface==='ceiling')g.rotate(Math.PI);if(r.face<0)g.scale(-1,1);const sprite=enemyFrames[(isSlime(r)?4:0)+f];const width=r.big?52:isSlime(r)?32:56,height=width*sprite.h/sprite.w;if(r.big)g.filter='hue-rotate(175deg) saturate(0.85)';g.drawImage(ratImage,sprite.x,sprite.y,sprite.w,sprite.h,-width/2,(r.bodyRadius||14)-height,width,height);g.filter='none';if(time<r.stun){g.strokeStyle='#c7ffa1';g.strokeRect(-width/2-3,10-height,width+6,height+8);}g.restore();if(r.state==='ready')text('!',r.x-4,r.y-32,'#f3bc79',23)}
 if(drawHero&&!reduced)for(const t of dashTrail){g.globalAlpha=Math.max(0,(t.until-time)/.18)*.25;drawHero(g,1,0,t.face<0,Math.round(t.x-(t.face<0?28:36)),Math.round(t.y-30))}g.globalAlpha=1;
 if(player.dashRemaining>0){for(const dy of [-13,0,13]){const len=reduced?12:30;rect(player.x-player.dashFace*30-(player.dashFace>0?len:0),player.y+dy,len,2,'#b4ecf1')}}
-if(boss.active){const a=world.arena;rect(a.exit.x-18,a.floor-80,36,80,boss.hp?'#673847':'#bce1a1');text(boss.hp?'擊敗紅熊開門':'出口',a.exit.x-35,a.floor-90);rect(a.mirror.x-14,a.floor-66,28,58,'#91bdc5');rect(a.mirror.x-9,a.floor-61,18,48,'#d3ebdd');text('破解鏡',a.mirror.x-23,a.floor-74);if(boss.hp){if(boss.cursed&&drawHero)drawHero(g,1,0,boss.face<0,boss.x-32,boss.y-30);else drawBear(g,boss,time,reduced);text(boss.state==='ready'?(boss.attack==='curse'?'認知顛倒！':'揮爪！'):'紅熊',boss.x-25,boss.y-57,'#ffbfae',14)}}
-if(drawHero){const moving=player.dashRemaining>0||keys.has('left')||keys.has('right')||keys.has('up')||keys.has('down');const attacking=time<attackUntil;const row=attacking?3:moving?1:0;const f=attacking?Math.min(5,Math.floor((.30-(attackUntil-time))/.05)):player.gliding?0:reduced?0:Math.floor(time*8)%6;g.globalAlpha=time<player.inv?(reduced?.65:Math.floor(time*10)%2===0?.45:1):1;if(boss.cursed){const sf=enemyFrames[4];g.drawImage(ratImage,sf.x,sf.y,sf.w,sf.h,player.x-18,player.y-14,36,28);text('你',player.x-6,player.y-25,'#d7fff5',12)}else drawHero(g,row,f,player.face<0,Math.round(player.x-(player.face<0?28:36)),Math.round(player.y-30));g.globalAlpha=1;
+if(boss.active){const a=world.arena;rect(a.exit.x-18,a.floor-80,36,80,boss.hp?'#673847':'#bce1a1');text(boss.hp?'擊敗紅熊開門':'出口',a.exit.x-35,a.floor-90);drawBossEffects(g,boss,time,reduced);for(const m of boss.mirrors)text(m.landed?'拾取破解鏡':'鏡子掉落',m.x-32,m.y-30,'#d7fff5',12);if(boss.hp){if(boss.cursed&&drawHero){drawHero(g,1,0,boss.face<0,boss.x-32,boss.y-30);drawBossTelegraph(g,boss);}else drawBear(g,boss,time,reduced);text(boss.state==='ready'?BOSS_ATTACK_LABELS[boss.attack]:'紅熊',boss.x-55,boss.y-63,'#ffbfae',14)}}
+if(drawHero){const moving=player.dashRemaining>0||keys.has('left')||keys.has('right')||keys.has('up')||keys.has('down');const attacking=time<attackUntil;const row=attacking?3:moving?1:0;const f=attacking?Math.min(5,Math.floor((.30-(attackUntil-time))/.05)):player.gliding?0:reduced?0:Math.floor(time*8)%6;g.globalAlpha=time<player.inv?(reduced?.65:Math.floor(time*10)%2===0?.45:1):1;if(boss.cursed){const sf=enemyFrames[4+(player.slimeAttack>0?3:player.grounded?Math.floor(time*7)%2:2)];g.save();g.translate(Math.round(player.x),Math.round(player.y));if(player.surface==='right')g.rotate(-Math.PI/2);else if(player.surface==='left')g.rotate(Math.PI/2);else if(player.surface==='ceiling')g.rotate(Math.PI);if(player.face<0)g.scale(-1,1);g.drawImage(ratImage,sf.x,sf.y,sf.w,sf.h,-18,-17,36,28);g.restore();g.strokeStyle='#e2ffe9';g.lineWidth=2;g.beginPath();g.ellipse(player.x,player.y,23,20,0,0,Math.PI*2);g.stroke();text('你 · 史萊姆',player.x-30,player.y-30,'#d7fff5',12)}else drawHero(g,row,f,player.face<0,Math.round(player.x-(player.face<0?28:36)),Math.round(player.y-30));g.globalAlpha=1;
 if(attacking&&slash)drawSlash(g,slash,1-(attackUntil-time)/.30,reduced,slashStyle)}
 if(chargeStart!==null){const q=Math.min(1,(time-chargeStart)/.8),cx=player.x+player.face*24;g.save();g.strokeStyle=q>=1?'#ffffff':'#8edcff';g.lineWidth=3;g.beginPath();g.arc(cx,player.y,7+q*12,0,Math.PI*2);g.stroke();g.fillStyle='#b8efff';g.beginPath();g.arc(cx,player.y,3+q*7,0,Math.PI*2);g.fill();g.restore()}
  drawEffects(g,magic,time,reduced);
 g.restore();
 if(time<hurtUntil){g.save();g.strokeStyle='#ed9a9a';g.lineWidth=5;g.globalAlpha=reduced?.5:(hurtUntil-time)/.35;g.strokeRect(3,3,canvas.width-6,canvas.height-6);g.restore()}
-if(boss.active){rect(canvas.width/2-120,14,240,8,'#482b36');rect(canvas.width/2-120,14,240*boss.hp/30,8,'#d7777c');text(`紅熊 ${boss.hp} / 30${boss.cursed?(handheld?' · 靠近左側鏡子破解':' · 認知顛倒：Q／鏡子破解'):''}`,canvas.width/2-120,38,'#ffe1d0',12)}
-// Explored-only overview; no undiscovered paths are revealed.
+if(boss.active){rect(canvas.width/2-135,7,270,boss.cursed?58:38,'#17242a');rect(canvas.width/2-120,14,240,8,'#482b36');rect(canvas.width/2-120,14,240*boss.hp/30,8,'#d7777c');text(`紅熊 ${boss.hp} / 30`,canvas.width/2-120,38,'#ffe1d0',12);if(boss.cursed)text('史萊姆：拾取重踏掉落的鏡子',canvas.width/2-120,57,'#b6e7c9',12)}
+// Explored-only overview; the isolated boss arena uses its own HUD.
+if(!boss.active){
 const scale=canvas.width<600?.75:1,mx=canvas.width-W*scale-18,my=14;
 rect(mx-6,my-6,W*scale+12,H*scale+24,'#0f2029');for(const s of seen){const [x,y]=s.split(',').map(Number);rect(mx+x*scale,my+y*scale,Math.max(1,scale),Math.max(1,scale),'#617b70')}
 for(const l of lights)if(!l.got&&seen.has(`${Math.floor(l.x/T)},${Math.floor(l.y/T)}`))rect(mx+l.x/T*scale,my+l.y/T*scale,3,3,'#ffe6a0');
 for(const r of rewards)if(!r.got&&seen.has(`${Math.floor(r.x/T)},${Math.floor(r.y/T)}`))rect(mx+r.x/T*scale,my+r.y/T*scale,r.kind==='relic'?3:2,r.kind==='relic'?'#cfadf4':'#78dfe5');
-rect(mx+player.x/T*scale,my+player.y/T*scale,3,3,'#9ef1db');text('已探索',mx+4,my+H*scale+12,'#bad0bd',10);
-rect(14,34,72,5,'#42524a');rect(14,34,Math.round(72*player.wing/MAX_WING),5,'#b8dab5');text(player.gliding?'滑翔':player.flapping?'拍翼':player.grounded?'休息回氣':'下落',14,56,'#b8dab5',11);
+rect(mx+player.x/T*scale,my+player.y/T*scale,3,3,'#9ef1db');text('已探索',mx+4,my+H*scale+12,'#bad0bd',10);}
+rect(14,34,72,5,'#42524a');rect(14,34,Math.round(72*player.wing/MAX_WING),5,'#b8dab5');text(player.slimeForm?(player.surface?'攀附':player.grounded?'史萊姆':'跳躍'):player.gliding?'滑翔':player.flapping?'拍翼':player.grounded?'休息回氣':'下落',14,56,'#b8dab5',11);
 if(breachHold){const px=player.x-camera.x,py=player.y-camera.y,q=Math.min(1,(time-breachHold.start)/BREACH_HOLD);rect(px-26,py-46,52,6,'#283c25');rect(px-26,py-46,52*q,6,'#c5dd98');text('破牆',px-14,py-51,'#dbe9ba',11)}
 text(`${Math.floor(time/60)}:${String(Math.floor(time%60)).padStart(2,'0')}`,14,24,'#bed0bd',12);
 

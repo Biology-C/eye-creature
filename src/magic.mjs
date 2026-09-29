@@ -1,3 +1,4 @@
+import {drawSweptSlash} from './slash-vfx.mjs';
 export function createMagic(){return {shots:[],effects:[],ready:0}}
 export function castLight(s,p,time,charged=false){
  if(time<s.ready)return false;
@@ -33,25 +34,5 @@ export function drawEffects(g,s,time,reduced){
   box(e.x-2,e.y-6,4,12,'#fff9e5');box(e.x-6,e.y-2,12,4,'#fff9e5');
  }
 }
-export const SLASH_STYLES=['銀白細刃','暗影爪痕','赤金重斬'];
-export function drawSlash(g,slash,progress,reduced,style=0){
- g.save();g.translate(slash.x,slash.y);g.scale(slash.face,1);g.globalAlpha=Math.max(.05,1-progress);g.lineCap='round';
- const phase=reduced?.45:progress;
- if(slash.stage){
- const color=['#d7f5ff','#9be5df','#ffda99'][style];
- const shape=()=>{if(slash.stage===2){g.ellipse(0,0,96,58,0,phase*6,phase*6+Math.PI*1.8)}else if(slash.stage===3){g.moveTo(18,-45);g.lineTo(92,45);g.moveTo(18,45);g.lineTo(92,-45)}else{g.moveTo(28,-52);g.quadraticCurveTo(111,-4,55,52)}};
- if(slash.stage===3){for(const flip of [-1,1]){g.save();g.scale(1,flip);g.fillStyle=color;g.beginPath();g.moveTo(12,-57);g.quadraticCurveTo(63,-6,106,54);g.quadraticCurveTo(54,20,12,-57);g.fill();g.strokeStyle='#ffffff';g.lineWidth=2;g.beginPath();g.moveTo(18,-49);g.quadraticCurveTo(63,3,100,47);g.stroke();g.restore()}}
- else for(const [w,c] of [[16,'#344c61'],[9,color],[3,'#ffffff']]){g.strokeStyle=c;g.lineWidth=w;g.beginPath();shape();g.stroke()}
- if(!reduced)for(let i=0;i<7;i++){const a=i*.9+phase*4;g.fillStyle=color;g.fillRect((slash.stage===2?0:55)+Math.cos(a)*(20+phase*65),Math.sin(a)*(20+phase*36),4,2)}
- }else if(style===0){
-  g.strokeStyle='#91b7c0';g.lineWidth=5;g.beginPath();g.ellipse(0,0,94,53,0,-1.15,1.15);g.stroke();
-  g.strokeStyle='#e9f6ec';g.lineWidth=2;g.beginPath();g.ellipse(0,0,97,53,0,-1.15,1.15);g.stroke();
-  g.fillStyle='#e9f6ec';g.beginPath();g.moveTo(26,-48);g.quadraticCurveTo(135,-5,28,48);g.quadraticCurveTo(110,0,26,-48);g.fill();
- }else if(style===1){
-  for(let i=0;i<3;i++){g.strokeStyle='#293343';g.lineWidth=10;g.beginPath();g.moveTo(25,-48+i*24);g.quadraticCurveTo(105,-30+i*24,80,1+i*24);g.stroke();g.strokeStyle='#91d1cf';g.lineWidth=2;g.stroke()}
- }else{
-  g.strokeStyle='#b45c45';g.lineWidth=12;g.beginPath();g.ellipse(0,0,88,51,0,-1.05,1.05);g.stroke();g.strokeStyle='#f3d5a0';g.lineWidth=4;g.stroke();
-  if(!reduced)for(let i=0;i<7;i++){const a=-1+i/3;g.fillStyle='#f3be73';g.fillRect(Math.cos(a)*(95+phase*14),Math.sin(a)*54,4,3)}
- }
- g.restore();
-}
+export const SLASH_STYLES=['銀青弧光','暗影掃刃','赤金重斬'];
+export function drawSlash(g,slash,progress,reduced,style=0){drawSweptSlash(g,slash,progress,reduced,style)}

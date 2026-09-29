@@ -1,3 +1,5 @@
+> Local development branch: the bear/metamorphosis/slash V2 changes are not published yet. See [specification and validation](docs/bear-metamorphosis-v2.md).
+
 # Eye Creature
 
 ## Try both versions
@@ -20,7 +22,7 @@ Extracted from the Mouse Maze experimental prototype. This repository now owns E
 
 ## Original phone controls
 
-The original game now uses the same handheld touch UI as the exploration preview: green/gray pixel controls with full-color gameplay. D-pad moves/looks, B flaps/glides, A attacks or charges magic, X dashes; SELECT opens the explored map, START pauses. Hold A for 0.65s near an eligible wall with 30 energy to breach. Melee targets take priority; cancellation never spends energy. Phone mirrors are environmental objects, including the existing boss mirror. Desktop E/Q/Shift and the original map/enemy distribution remain unchanged. The original still has no reload checkpoint persistence.
+The original game now uses the same handheld touch UI as the exploration preview: green/gray pixel controls with full-color gameplay. D-pad moves/looks, B flaps/glides, A attacks or charges magic, X dashes; SELECT opens the explored map, START pauses. Hold A for 0.65s near an eligible wall with 30 energy to breach. Melee targets take priority; cancellation never spends energy. Phone mirrors are environmental objects, with boss mirrors now dropped by a cursed stomp. Desktop E/Q/Shift and the original map/enemy distribution remain unchanged. The original still has no reload checkpoint persistence.
 
 See [validation notes](docs/handheld-original.md). Physical iOS/Android touch feel still needs player testing.
 
@@ -55,3 +57,7 @@ Latest balance: 20 regular pure slimes, 20 initial birds across 20 zones, and fi
 ### Combo and charged-light prototype
 
 Tap attack near an enemy for slash → spin → forward cross slash (0.32s between swings, 0.85s combo window). At range, release a short press to fire; cooldown is 0.5s. Hold 0.8s and release for one larger projectile dealing 1.5 damage. The spread relic still affects normal shots. Pause, blur and death cancel charging and buffered attacks. Tornadoes now use horizontal green coils and retain two reflections.
+
+## Bear and metamorphosis V2 (local)
+
+The 30-HP bear has aimed ranged volleys and telegraphed stomps. At 75%, 50%, and 20% remaining HP it summons two crystal rats, three slimes, and one large purple slime, once per threshold. Transformation changes the player into a hopping/climbing slime with a contact lunge (Space/A); flight, magic, dash, and breach are unavailable. Collect the grounded mirror dropped by a stomp to recover. Q still reflects birds but cannot bypass the transformation. Death/restart clears summoned enemies, mirrors, and hostile projectiles. The slash preview now offers stage selection, slow playback, and frame scrubbing.
