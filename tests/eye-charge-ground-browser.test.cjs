@@ -3,7 +3,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
  for(const phone of [false,true]){
  const page=await browser.newPage({viewport:phone?{width:390,height:844}:{width:1280,height:900},isMobile:phone,hasTouch:phone});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/game.js',r=>r.fulfill({contentType:'application/javascript',body:fs.readFileSync('src/game.js','utf8')+`
- window.chargeTest={update,render,pause,resume,hurt,world,pressAttack,releaseAttack,get p(){return player},get b(){return boss},get shots(){return magic.shots},get charge(){return chargeStart},get time(){return time},prepare(face=1){reset();beginBoss();resume();boss.x=400;boss.timer=999;boss.stun=9999;player.x=400-face*200;player.y=world.arena.floor-11.01;player.face=face;player.inv=9999;player.grounded=true;},tick(n,fps){for(let i=0;i<n;i++){update(1/fps);render()}}};
+ window.chargeTest={update,render,pause,resume,hurt,world,pressAttack,releaseAttack,get p(){return player},get b(){return boss},get shots(){return magic.shots},get charge(){return chargeStart},get time(){return time},prepare(face=1){reset();beginBoss();resume();boss.x=400;boss.timer=999;boss.stun=9999;player.x=400-face*200;player.y=world.arena.floor-11.01;player.face=face;player.inv=9999;player.grounded=true;},tick(n,fps){for(let i=0;i<n;i++)update(1/fps);render()}};
  `}));await page.addInitScript(()=>requestAnimationFrame=()=>1);
  await page.goto((process.env.BASE_URL||'http://127.0.0.1:8768/')+'?boss-preview=1');await page.click('#start');
  const cdp=phone?await page.context().newCDPSession(page):null;let touch;
