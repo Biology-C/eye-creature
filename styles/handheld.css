@@ -1,0 +1,51 @@
+/* Pixel shell applies only to touch devices. The game canvas stays full color. */
+.handheld-only{display:none}
+html.handheld{--ink:#202a27;--lcd:#adbe87;--lcd-light:#cad7a5;--case:#c8cac2;--edge:#777e76;background:var(--case)}
+.handheld body,.handheld body.light{height:100dvh;overflow:hidden;overscroll-behavior:none;background:var(--case);color:var(--ink);-webkit-user-select:none;user-select:none}
+.handheld main{height:100dvh;max-width:1050px;margin:auto;padding:max(6px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));display:grid;grid-template-rows:22px 53px minmax(120px,1fr) 40px 218px;gap:0;border:4px solid var(--edge);box-shadow:inset 4px 4px #eff0e7,inset -4px -4px #a0a59b;font-family:ui-monospace,monospace}
+.handheld .handheld-only{display:block}
+.handheld header{justify-content:center;min-width:0}.handheld header small{display:block;font:bold 12px Consolas,monospace;letter-spacing:.15em;color:var(--ink)}
+.handheld h1,.handheld header nav,.handheld footer,.handheld #region,.handheld #attack-mode{display:none}
+.handheld .hud,.handheld body.light .hud{border:4px solid var(--ink);border-bottom:0;border-radius:0;background:var(--lcd);padding:4px 6px;gap:6px;flex-wrap:nowrap;font-size:11px;color:var(--ink);justify-content:space-between;min-width:0}
+.handheld .vitals{gap:2px;flex:0 0 auto}.handheld #hearts{min-width:112px}.handheld .hp-heart{width:24px;height:24px;margin-right:0}
+.handheld .hp-heart path{fill:var(--ink)}.handheld .hp-heart path:last-child{fill:var(--lcd)}
+.handheld .hp-body{gap:0}.handheld .hp-label{font:9px monospace;color:var(--ink);text-shadow:none}.handheld .hp-label small{font-size:9px;color:var(--ink)}
+.handheld .hp-track{height:12px;border:2px solid var(--ink);box-shadow:none}.handheld .hp-cell{height:8px;width:15px;border-color:var(--lcd);background:#87966e}.handheld .heart-fill{background:var(--ink)}
+.handheld .hud #healing{font:9px monospace;color:var(--ink)}.handheld #quest,.handheld #energy{color:var(--ink);font-weight:bold;white-space:nowrap}
+.handheld .viewport{min-height:0;min-width:0;border:4px solid var(--ink);display:flex;background:#14292e}
+.handheld #game{height:100%;width:100%;max-height:none;border:0;aspect-ratio:auto;object-fit:fill;touch-action:none;image-rendering:pixelated}
+.handheld #notice,.handheld body.light #notice{margin:0;padding:3px 8px;background:var(--lcd);border:4px solid var(--ink);border-top:0;color:var(--ink);font-size:11px;line-height:15px;min-height:0;overflow:hidden;display:flex;align-items:center}
+.handheld .touch{display:grid;position:relative;grid-template-columns:1fr 1fr;grid-template-rows:168px 50px;align-items:center;justify-items:center;gap:0;touch-action:none;-webkit-touch-callout:none}
+.handheld button{color:var(--ink);background:var(--lcd-light);border:3px solid var(--ink);border-radius:0;box-shadow:inset 2px 2px #e7ecd9,inset -2px -2px #687564,0 3px #606960;font:700 13px ui-monospace,monospace;padding:4px;min-height:56px;touch-action:none}
+.handheld button:focus-visible{outline:3px solid #111;outline-offset:2px}.handheld button:active,.handheld button.pressed{background:#859864;box-shadow:inset 3px 3px #485843;transform:translateY(2px)}
+.handheld .pad{position:static;width:168px;height:168px;display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(3,56px);gap:0;align-self:center}
+.handheld .pad button{width:56px;height:56px;background:#303b35;color:var(--lcd-light);border:0;box-shadow:inset 3px 3px #677164,inset -3px -3px #101916;font-size:24px}
+.handheld .pad .up{grid-area:1/2}.handheld .pad .left{grid-area:2/1}.handheld .pad .right{grid-area:2/3}.handheld .pad .down{grid-area:3/2}
+.handheld .pad:after{content:'';grid-area:2/2;background:#303b35;border:14px solid #303b35;box-shadow:inset 0 0 0 3px #425044}
+.handheld .pad button.pressed{background:#53684b;transform:none;box-shadow:inset 3px 3px #1a271a}
+.handheld .action-pad{position:relative;width:160px;height:168px}
+.handheld .action-pad button{position:absolute;width:66px;height:66px;min-width:0;min-height:0;padding:3px;border-width:4px;clip-path:polygon(12% 0,88% 0,88% 6%,100% 6%,100% 88%,94% 88%,94% 100%,6% 100%,6% 94%,0 94%,0 12%,12% 12%);font-size:27px;line-height:30px;background:#303b35;color:var(--lcd-light);box-shadow:inset 3px 3px #677164,inset -3px -3px #101916}
+.handheld .action-pad button small{display:block;font:10px monospace;color:var(--lcd-light);letter-spacing:0;line-height:15px}
+.handheld #dash{position:absolute;top:0;left:26px;right:auto;bottom:auto;min-width:0;min-height:0}.handheld .attack{top:52px;right:0}.handheld #flap{top:100px;left:26px}
+.handheld #dash[data-ready=false]{background:#687260}.handheld .attack[data-intent=breach]{background:#526c3c}
+.handheld #magic,.handheld #mirror,.handheld #breach{display:none}
+.handheld .system-pad{grid-column:1/-1;display:flex;gap:18px;justify-content:center;width:100%;align-self:end}
+.handheld .system-pad button{min-width:86px;min-height:44px;height:44px;padding:2px;background:#b5bdb0;font-size:12px;box-shadow:inset 2px 2px #e6e9df,inset -2px -2px #697561}
+.handheld .system-pad small{display:block;color:var(--ink);font-size:10px;letter-spacing:0}
+.handheld #overlay{background:#bdcba3f7;color:var(--ink);padding:12px;gap:8px;overscroll-behavior:contain;touch-action:pan-y}
+.handheld #overlay h2{font-size:22px;color:var(--ink);margin:0}.handheld #overlay p,.handheld #save-status{color:var(--ink);font-size:12px;margin:2px 0}.handheld #overlay button{min-height:56px;color:var(--ink);background:var(--lcd-light)}
+.handheld #overlay a{color:#244532}.handheld #pause-details{font-size:12px;border-color:#647559}.handheld #pause-details summary{padding:12px;min-height:44px}
+.handheld #journey-map{width:100%;height:160px;object-fit:contain;background:var(--lcd);border:2px solid var(--ink);image-rendering:pixelated}
+.handheld #map-panel{width:100%;max-width:550px}.handheld #map-panel p{font-size:10px}
+.handheld #critical-vignette{box-shadow:inset 0 0 30px 10px #e42540}
+@media (orientation:landscape){
+ .handheld main{max-width:none;grid-template-columns:174px minmax(100px,1fr) 162px;grid-template-rows:19px 47px minmax(120px,1fr) 35px;column-gap:4px}
+ .handheld header,.handheld .hud,.handheld .viewport,.handheld #notice{grid-column:2}
+ .handheld header{grid-row:1}.handheld .hud{grid-row:2}.handheld .viewport{grid-row:3}.handheld #notice{grid-row:4}
+ .handheld .touch{display:contents}.handheld .pad{grid-column:1;grid-row:2/4;align-self:center}.handheld .action-pad{grid-column:3;grid-row:2/4;align-self:center}
+ .handheld .system-pad{grid-column:1/4;grid-row:4;display:contents}.handheld #select{grid-column:1;grid-row:4;width:100px;justify-self:center;min-height:44px;margin-top:-9px}.handheld #handheld-start{grid-column:3;grid-row:4;width:100px;justify-self:center;min-height:44px;margin-top:-9px}
+ .handheld .hud{font-size:10px;padding:2px 4px;gap:3px}.handheld #notice{font-size:10px;line-height:13px}
+}
+@media (max-width:370px) and (orientation:portrait){
+ .handheld main{padding-left:3px;padding-right:3px}.handheld .action-pad{width:140px}.handheld .action-pad button{width:60px;height:60px}.handheld #dash,.handheld #flap{left:16px}.handheld .hud{gap:3px;font-size:10px}.handheld #hearts{min-width:103px}.handheld .hp-cell{width:13px}
+}

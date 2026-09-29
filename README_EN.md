@@ -1,6 +1,6 @@
 # Eye Creature
 
-**[🎮 Choose a version](https://biology-c.github.io/eye-creature/versions/)** · [Original maze](https://biology-c.github.io/eye-creature/) · [Exploration preview (desktop)](https://biology-c.github.io/eye-creature/preview/)
+**[🎮 Choose a version](https://biology-c.github.io/eye-creature/versions/)** · [Original maze](https://biology-c.github.io/eye-creature/) · [Exploration preview](https://biology-c.github.io/eye-creature/preview/)
 
 [繁體中文](README.md) · [Original Mouse Maze](https://github.com/Biology-C/mousemaze)
 
@@ -10,7 +10,13 @@ Extracted from the Mouse Maze experimental prototype. This repository now owns E
 
 ## Exploration preview
 
-The `feature/first-adventure-rework` branch adds an authored spine with six seeded branches, gaze clues, three wind ducts, combo-cleared obstacles, three memories, desktop HUD/camera improvements and browser-local checkpoint saves. Published separately at `/preview/`; the root URL keeps the original `main` game. See [deployment notes](docs/PUBLISHING.md). Desktop only for this acceptance pass; mobile work is deferred by request. See the [validation record](docs/design/adventure-validation.md).
+The `feature/first-adventure-rework` branch adds an authored spine with six seeded branches, gaze clues, three wind ducts, combo-cleared obstacles, three memories, desktop HUD/camera improvements and browser-local checkpoint saves. Published separately at `/preview/`; the root URL keeps the original `main` game. See [deployment notes](docs/PUBLISHING.md). The preview now includes a dedicated touch-device handheld shell while preserving desktop controls. See the [validation record](docs/design/adventure-validation.md).
+
+## Phone controls
+
+Touch devices use a green-and-gray pixel handheld shell; the game remains full color. D-pad moves/looks, B flaps/glides, A attacks or charges magic, X dashes. Near an eligible wall with 30 energy, hold A for 0.65s to breach; turning away, leaving range, damage or a melee target cancels it. Phone mirrors are environmental props, including the existing boss-room mirror. SELECT opens the explored map; START pauses. Desktop Space/E/Q/Shift are unchanged.
+
+Portrait, landscape and multi-touch browser emulation pass; physical iOS/Android testing remains pending. See [phone validation](docs/design/handheld.md).
 
 ## Run
 

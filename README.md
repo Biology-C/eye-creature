@@ -1,6 +1,6 @@
 # 眼球怪 Eye Creature
 
-**[🎮 選擇試玩版本](https://biology-c.github.io/eye-creature/versions/)** · [原版迷宮](https://biology-c.github.io/eye-creature/) · [探索改造版（桌面測試）](https://biology-c.github.io/eye-creature/preview/)
+**[🎮 選擇試玩版本](https://biology-c.github.io/eye-creature/versions/)** · [原版迷宮](https://biology-c.github.io/eye-creature/) · [探索改造版](https://biology-c.github.io/eye-creature/preview/)
 
 [English](README_EN.md) · [原作 Mouse Maze](https://github.com/Biology-C/mousemaze)
 
@@ -10,9 +10,18 @@
 
 ## 探索改造版：凝視、展翼、開路
 
-新版位於 `feature/first-adventure-rework`，獨立發布到 `/preview/`；首頁繼續提供 `main` 的原版。兩版程式各自維護，參閱[發布方式](docs/PUBLISHING.md)。依最新要求，本輪以桌面鍵盤為主，手機實作及驗收暫緩。固定主線加六條種子支路，包含自動凝視、三組風道、三種連段清障、勇者殘響、五座休息燈存檔。敵人首輪重排為12隻水晶老鼠、10隻純史萊姆、3隻紫色大史萊姆、3隻樹妖及6隻初始青影鳥；離區停止增殖計時。
+新版位於 `feature/first-adventure-rework`，獨立發布到 `/preview/`；首頁繼續提供 `main` 的原版。兩版程式各自維護，參閱[發布方式](docs/PUBLISHING.md)。桌面保留鍵盤操作；手機已加入獨立掌機介面（綠底黑像素、灰階操作區、彩色遊戲畫面）。固定主線加六條種子支路，包含自動凝視、三組風道、三種連段清障、勇者殘響、五座休息燈存檔。敵人首輪重排為12隻水晶老鼠、10隻純史萊姆、3隻紫色大史萊姆、3隻樹妖及6隻初始青影鳥；離區停止增殖計時。
 
 [玩家說明](docs/design/adventure-player-guide.md) · [工程與階段規格](docs/design/adventure-rework-spec.md) · [驗收與待真人試玩項目](docs/design/adventure-validation.md)
+
+## 手機掌機介面
+
+- 十字鍵移動／觀察，B 拍翼與滑翔，A 攻擊／蓄力，X 衝刺。
+- 面向可破牆且能量足夠時，長按 A 0.65 秒消耗 30 能量破牆。短按仍攻擊；移開、轉向、受傷或敵人進入近戰範圍會取消破牆。
+- 手機不設鏡面按鍵：靠近場景鏡面映照青影鳥；紅熊房左側鏡子解除詛咒。
+- SELECT 查看已探索地圖，START 暫停。手機自動使用掌機布局，桌面操作不變。
+
+[手機規格與測試紀錄](docs/design/handheld.md)。已通過瀏覽器模擬多指與橫直向測試；實機 Safari／Android 手感仍待試玩。
 
 ## 目前可玩內容
 

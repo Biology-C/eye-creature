@@ -22,3 +22,6 @@ The five-segment HP display is original SVG/CSS artwork based on the user-provid
 - Green tornado coils: original procedural Canvas rendering inspired by the user-provided green wind animation reference (2026-09-29); no reference pixels embedded. Combo slash ribbons and charge effects are also procedural.
 
 - Adventure rework: original Canvas drawings for cracked tank, roots, mirror columns, observatory, wind grilles, environmental barriers and memory silhouettes. Audio cues are generated with Web Audio sine oscillators; no third-party samples added. Existing hero/monster sprites retained.
+
+
+- 手機掌機介面：原創 CSS 像素邊框、十字鍵、A/B/X 按鍵與綠灰調色；依使用者核定的掌機樣張重新實作，未使用參考照片作遊戲素材。场景鏡面以原創 Canvas 幾何繪製。
