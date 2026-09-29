@@ -3,8 +3,8 @@ export function startDash(o){
  if((o.dashCooldown||0)>0||(o.dashRemaining||0)>0)return false;
  o.dashRemaining=.18;o.dashCooldown=o.abilities?.dash ? .6 : 1.2;o.dashFace=o.face||1;return true;
 }
-export function createPhysics(map,T,platforms){
- const solid=(x,y)=>map[Math.floor(y/T)]?.[Math.floor(x/T)]!==0;
+export function createPhysics(map,T,platforms,extraSolid=()=>false){
+ const solid=(x,y)=>map[Math.floor(y/T)]?.[Math.floor(x/T)]!==0||extraSolid(x,y);
  function free(x,y,r){return ![[x-r,y-r],[x+r,y-r],[x-r,y+r],[x+r,y+r]].some(([a,b])=>solid(a,b))}
  function fall(o,dy,r,allowPlatforms){
   const steps=Math.max(1,Math.ceil(Math.abs(dy)/3));o.grounded=false;

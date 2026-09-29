@@ -20,7 +20,8 @@ export function updateSlimePlayer(p,keys,dt,physics){
   p.bodyRadius=11;
   if(p.surface){
    const wall=p.surface==='ceiling'?physics.solid(p.x,p.y-13):physics.solid(p.x+(p.surface==='right'?13:-13),p.y);
-   if(!wall||down){p.surface=null;p.vy=25}
+   const away=(p.surface==='right'&&dx<0)||(p.surface==='left'&&dx>0);
+   if(!wall||down||away){p.surface=null;p.vy=25}
    else{
     p.vy=0;p.grounded=false;
     if(p.surface==='ceiling')physics.moveEnemy(p,dx*SLIME_RUN*step);

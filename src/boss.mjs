@@ -13,6 +13,11 @@ export function createBoss(world){const a=world.arena,b={x:576,y:a.floor-38,hp:3
 export function enterBoss(b,p,a){resetEncounter(b);b.active=true;b.x=576;b.y=a.floor-38;Object.assign(p,{x:a.start.x,y:a.start.y,vy:0,wing:.7,hp:MAX_HP,dashRemaining:0})}
 export function resetBoss(b){b.active=false;resetEncounter(b);if(b.hp>0)b.hp=b.maxHp}
 export function clearBossCurse(b){if(!b.cursed)return false;b.cursed=false;b.mirrors=[];return true}
+export function bossGateSolid(b,x,y){
+ if(!b.active||b.hp<=0)return false;
+ const a=b.arena;
+ return x>=a.exit.x-18&&x<a.exit.x+18&&y>=a.floor-80&&y<a.floor;
+}
 export function bossSummons(b,p,kinds,living=0){
  const a=b.arena,positions=[a.left+104,a.right-104,a.left+216,a.right-216,a.left+312,a.right-312];
  // Ground spawns prefer the side away from the player, with a full second of grace.
@@ -99,7 +104,7 @@ export function drawBossTelegraph(g,b){
 export function drawBossEffects(g,b,time,reduced){
  g.save();
  for(const s of b.shots){g.fillStyle=s.kind==='wave'?'#d97678':'#9b4770';g.beginPath();g.ellipse(s.x,s.y,s.radius+5,s.radius,0,0,Math.PI*2);g.fill();g.fillStyle='#ffe0ae';g.beginPath();g.arc(s.x,s.y,s.radius*.55,0,Math.PI*2);g.fill()}
- for(const e of b.effects){g.globalAlpha=(e.until-time)/.45;g.strokeStyle='#efba9c';g.lineWidth=3;g.beginPath();g.ellipse(e.x,e.y-2,reduced?85:35+(1-g.globalAlpha)*110,12,0,Math.PI*2);g.stroke()}g.globalAlpha=1;
+ for(const e of b.effects){const alpha=Math.max(0,Math.min(1,(e.until-time)/.45));g.globalAlpha=alpha;g.strokeStyle='#efba9c';g.lineWidth=3;g.beginPath();g.ellipse(e.x,e.y-2,reduced?85:35+(1-alpha)*110,12,0,0,Math.PI*2);g.stroke()}g.globalAlpha=1;
  for(const m of b.mirrors){g.fillStyle='#4a3e54';g.fillRect(m.x-12,m.y-18,24,34);g.fillStyle='#88b7be';g.fillRect(m.x-9,m.y-15,18,28);g.fillStyle='#e1fff1';g.fillRect(m.x-6,m.y-12,5,20);g.fillRect(m.x+2,m.y-6,4,12);if(!m.landed){g.strokeStyle='#b3dbe0';g.beginPath();g.moveTo(m.x,m.y-40);g.lineTo(m.x,m.y-24);g.stroke()}}
  g.restore();
 }
