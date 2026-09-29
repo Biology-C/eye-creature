@@ -1,5 +1,7 @@
 # Eye Creature
 
+**[🎮 Play in your browser](https://biology-c.github.io/eye-creature/)**
+
 [繁體中文](README.md) · [Original Mouse Maze](https://github.com/Biology-C/mousemaze)
 
 A standalone pixel-art action maze prototype. Explore the first level, collect three guiding lights, and escape as a fallen hero's eye transformed into a biological weapon.

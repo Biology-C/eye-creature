@@ -1,5 +1,7 @@
 # 眼球怪 Eye Creature
 
+**[🎮 立即線上試玩](https://biology-c.github.io/eye-creature/)**
+
 [English](README_EN.md) · [原作 Mouse Maze](https://github.com/Biology-C/mousemaze)
 
 獨立的像素風動作迷宮原型。扮演被魔王軍改造成生物兵器的勇者眼球，拍翼、滑翔並穿過「殘光培養所」，找到三顆引路光點逃出出口。
