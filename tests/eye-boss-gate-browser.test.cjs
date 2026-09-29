@@ -3,7 +3,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
 for(const phone of [false,true]){
  const page=await browser.newPage({viewport:phone?{width:390,height:844}:{width:1280,height:900},isMobile:phone,hasTouch:phone});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/game.js',r=>r.fulfill({contentType:'application/javascript',body:fs.readFileSync('src/game.js','utf8')+`
- window.gateTest={update,render,reset,beginBoss,keys,world,physics,get b(){return boss},get p(){return player},get mode(){return mode},clock:()=>time,motion:v=>reduced=v,prepare(){reset();beginBoss();resume();player.inv=9999;boss.timer=999;},step(dt){update(dt);render()}};
+ window.gateTest={update,render,reset,beginBoss,keys,world,physics,get b(){return boss},get p(){return player},get mode(){return mode},clock:()=>time,motion:v=>reduced=v,prepare(){reset();beginBoss();resume();player.inv=9999;boss.timer=999;},step(dt){update(dt);g.clearRect(0,0,canvas.width,canvas.height);drawBossEffects(g,boss,time,reduced)}};
  `}));await page.addInitScript(()=>window.requestAnimationFrame=()=>1);
  await page.goto((process.env.BASE_URL||'http://127.0.0.1:8768/')+'?boss-preview=1');await page.click('#start');
  const checks=await page.evaluate(()=>{
@@ -19,10 +19,11 @@ for(const phone of [false,true]){
   const stillPlaying=t.mode==='playing';const progressed=t.clock()>start+2.9;
   t.b.hp=0;t.step(1/fps);const gateOpen=!t.physics.solid(t.world.arena.exit.x,t.world.arena.floor-30);
   Object.assign(t.p,{x:670,y:t.world.arena.floor-11.01,vy:0});t.keys.add('right');for(let i=0;i<fps*.5&&t.mode==='playing';i++)t.step(1/fps);t.keys.clear();
-  out.push({fps,reduced,effect,blocked,retreats,attached,detached,stillPlaying,progressed,gateOpen,won:t.mode==='won'});
+  t.render();out.push({fps,reduced,effect,blocked,retreats,attached,detached,stillPlaying,progressed,gateOpen,won:t.mode==='won'});
  }return out;
  });for(const c of checks)assert.deepEqual(c,{fps:c.fps,reduced:c.reduced,effect:1,blocked:true,retreats:true,attached:true,detached:true,stillPlaying:true,progressed:true,gateOpen:true,won:true});
- // Render a naturally running complete attack cycle, not only its ending frame.
+ // Render boss effects on a real canvas every frame; full-scene snapshots are checked above.
+ // Redrawing unrelated terrain thousands of times makes this regression exceed CI limits.
  await page.evaluate(()=>{const t=gateTest;t.prepare();t.motion(false);t.b.timer=.1;for(let i=0;i<60*35;i++)t.step(1/60)});
  assert.deepEqual(errors,[]);await page.close();
 }
