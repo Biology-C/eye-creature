@@ -1,6 +1,7 @@
 import {MAX_HP} from './health.mjs';
 export const WING_REFILL=.28;
 export function createRewards(world){
+ if(world.rewardSpec)return structuredClone(world.rewardSpec);
  const {graph,position}=world;
  function distances(start){const d=Array(graph.length).fill(Infinity),q=[start];d[start]=0;for(let i=0;i<q.length;i++)for(const n of graph[q[i]])if(d[n]===Infinity){d[n]=d[q[i]]+1;q.push(n)}return d}
  const forbidden=new Set([0,world.exitNode,...world.lightNodes,...world.traps.map(t=>t.node)]);
@@ -24,6 +25,6 @@ export function collectReward(reward,player,maxWing,time){
   reward.healed=player.hp-hp;reward.healCycles=cycles;
  }
  if(reward.kind==='relic'&&reward.ability){player.abilities??={};player.abilities[reward.ability]=true}
- if(reward.kind==='energy')player.energy=(player.energy||0)+1;
+ if(reward.kind==='energy')player.energy=(player.energy||0)+(reward.amount||1);
  reward.got=true;reward.collectedAt=time;return true;
 }

@@ -3,8 +3,8 @@ export function startDash(o){
  if((o.dashCooldown||0)>0||(o.dashRemaining||0)>0)return false;
  o.dashRemaining=.18;o.dashCooldown=o.abilities?.dash ? .6 : 1.2;o.dashFace=o.face||1;return true;
 }
-export function createPhysics(map,T,platforms){
- const solid=(x,y)=>map[Math.floor(y/T)]?.[Math.floor(x/T)]!==0;
+export function createPhysics(map,T,platforms,blocked=()=>false){
+ const solid=(x,y)=>map[Math.floor(y/T)]?.[Math.floor(x/T)]!==0||blocked(x,y);
  function free(x,y,r){return ![[x-r,y-r],[x+r,y-r],[x-r,y+r],[x+r,y+r]].some(([a,b])=>solid(a,b))}
  function fall(o,dy,r,allowPlatforms){
   const steps=Math.max(1,Math.ceil(Math.abs(dy)/3));o.grounded=false;
@@ -20,7 +20,7 @@ export function createPhysics(map,T,platforms){
   }
  }
  function horizontal(o,dx,r){const n=Math.max(1,Math.ceil(Math.abs(dx)/3));for(let i=0;i<n;i++)if(free(o.x+dx/n,o.y,r))o.x+=dx/n;}
- function player(o,keys,dt){
+ function player(o,keys,dt,inWind=false){
   const n=Math.max(1,Math.ceil(dt*120)),step=dt/n;
   for(let i=0;i<n;i++){
    o.dashCooldown=Math.max(0,(o.dashCooldown||0)-step);
@@ -32,7 +32,8 @@ export function createPhysics(map,T,platforms){
    if(o.grounded)o.wing=Math.min(MAX_WING,o.wing+step*1.4);
    o.flapping=up&&!down&&o.wing>0&&(!o.grounded||o.wing>=.35);
    o.gliding=up&&!down&&!o.flapping&&!o.grounded;
-   if(o.flapping){o.wing=Math.max(0,o.wing-step);o.vy=-260;o.grounded=false}
+   if(inWind&&!down){o.vy=Math.max(-220,o.vy-650*step);o.flapping=false;o.gliding=true;o.grounded=false}
+   else if(o.flapping){o.wing=Math.max(0,o.wing-step);o.vy=-260;o.grounded=false}
    else o.vy=Math.min(down?480:o.gliding?65:360,o.vy+(o.gliding?200:850)*step);
    horizontal(o,(Number(keys.has('right'))-Number(keys.has('left')))*RUN_SPEED*step,11);
    fall(o,o.vy*step,11,!down);

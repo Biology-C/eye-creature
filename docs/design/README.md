@@ -159,3 +159,7 @@ Space／手機攻擊按鈕統一選招，長按依冷卻連續施放：面前有
 ## V1.15
 
 最新數量與生命規則見根目錄 README「密度、紫色大史萊姆與五格生命」。取代舊的 6 隻純史萊姆、18 秒增殖、每區 5 隻與三心上限。五格 HP 圖示為依使用者參考圖重新以 SVG／CSS 繪製；心跳紅邊依遊戲時間驅動。
+
+## Adventure-2 桌面改造
+
+最新功能、數量及驗收以 [工程規格](adventure-rework-spec.md)、[玩家說明](adventure-player-guide.md)、[驗收紀錄](adventure-validation.md) 為準。本次後續指示已排除手機執行與測試。

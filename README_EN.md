@@ -8,6 +8,10 @@ A standalone pixel-art action maze prototype. Explore the first level, collect t
 
 Extracted from the Mouse Maze experimental prototype. This repository now owns Eye Creature code, assets, issues and releases; Mouse Maze keeps its original adventure, educational and mechanism modes.
 
+## Local adventure rework
+
+The `feature/first-adventure-rework` branch adds an authored spine with six seeded branches, gaze clues, three wind ducts, combo-cleared obstacles, three memories, desktop HUD/camera improvements and browser-local checkpoint saves. Not deployed yet. Desktop only for this acceptance pass; mobile work is deferred by request. See the [validation record](docs/design/adventure-validation.md).
+
 ## Run
 
 Node.js 22 or later: `npm start`, then open http://127.0.0.1:8768/ . No build or dependency installation is needed to play; use HTTP rather than opening the HTML file directly.
@@ -16,7 +20,7 @@ Move: arrows or WASD. Up flaps/glides; down drops through platforms. Space autom
 
 Features include jumping crystal rats that transform into slime, shadow birds, melee-only tree fiends, timed spikes, exploration torches, collectibles, healing shards and destructible marked walls/floors/ceilings. Light/dark and reduced-motion settings are supported.
 
-No save across reloads. Death preserves current-run progress; reload/restart clears it. The 10–15 minute playtime is a design target, not a guarantee. Later levels and additional magic are not implemented. The first red bear boss prototype now guards the exit (30 HP); trees have 5 HP and shadow birds are capped at six per activated zone.
+In the local rework, lamps save checkpoints in the same browser. Death preserves current-run progress; reload restores the last lamp snapshot. Starting a new run asks before replacing an existing save. The previously published build has no persistence. The 10–15 minute playtime is a design target, not a guarantee. Later levels and additional magic are not implemented. The first red bear boss prototype now guards the exit (30 HP); trees have 5 HP and shadow birds are capped at six per activated zone.
 
 ## Test
 

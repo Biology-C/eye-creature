@@ -1,5 +1,6 @@
 export const BREACH_COST=30;
 export function createCrackedWalls(world){
+ if(world.crackedSpec)return structuredClone(world.crackedSpec);
  const walls=[];
  for(let a=0;a<world.graph.length-1;a++){
   const b=a+1;if(a%20===19||world.graph[a].includes(b)||a<3||[a,b].some(n=>world.lightNodes.includes(n)||n===world.exitNode))continue;
@@ -33,7 +34,7 @@ export function nearbyWall(player,walls,direction=null){
 export function breakWall(player,wall,map,tileSize,platforms=[]){
  if(!wall||wall.broken||player.energy<BREACH_COST)return false;
  for(let y=wall.y/tileSize;y<(wall.y+wall.h)/tileSize;y++)for(let x=wall.x/tileSize;x<(wall.x+wall.w)/tileSize;x++)map[y][x]=0;
- if(wall.axis==='vertical'){
+ if(wall.axis==='vertical'&&!wall.id.startsWith('duct-')){
   // Remove thin ledges that cap the opening; new one-way rests keep ascent possible.
   const kept=[];for(const p of platforms){if(p.y>=wall.y&&p.y<=wall.y+wall.h&&p.x<wall.x+wall.w&&p.x+p.w>wall.x){if(p.x<wall.x)kept.push({...p,w:wall.x-p.x});if(p.x+p.w>wall.x+wall.w)kept.push({...p,x:wall.x+wall.w,w:p.x+p.w-wall.x-wall.w})}else kept.push(p)}
   platforms.splice(0,platforms.length,...kept);
@@ -48,6 +49,7 @@ export function ordinaryWall(player,world,direction){
  for(let d=14;d<=56;d+=4){const tx=Math.floor((player.x+dx*d)/T),ty=Math.floor((player.y+dy*d)/T);if(world.map[ty]?.[tx]!==1)continue;
  const x=tx+(dx<0?-2:dx===0?-1:0),y=ty+(dy<0?-2:dy===0?-1:0);
  if(x<2||y<2||x+3>world.W-2||y+3>world.mazeHeight-2)return null;
+ if(world.protectedRects?.some(r=>x*T<r.x+r.w&&(x+3)*T>r.x&&y*T<r.y+r.h&&(y+3)*T>r.y))return null;
  return {id:`ordinary-${x}-${y}`,x:x*T,y:y*T,w:3*T,h:3*T,axis:dy?'vertical':undefined,ordinary:true,broken:false};
  }return null;
 }

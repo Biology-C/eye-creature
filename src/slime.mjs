@@ -1,5 +1,6 @@
 export const SLIME_JUMP=-250*Math.SQRT2,SLIME_RUN=34*1.25,SLIME_AIR=165*1.25;
 export function createPureSlimes(world,seed=928,count=20){
+ if(world.pureSpawns)return structuredClone(world.pureSpawns);
  let s=seed>>>0;const random=()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296};const out=[];
  for(let n=4;n<world.graph.length;n++){if(n===world.exitNode||world.lightNodes.includes(n)||world.traps.some(t=>t.node===n))continue;const p=world.tile(n),pos=world.position(n);if(world.safes.some(a=>a.x===pos.x&&a.y===pos.y)||world.rats.some(r=>Math.abs(r.x-pos.x)<80&&Math.abs(r.y-pos.y)<160))continue;
  if(![1,2,3].every(dx=>world.map[p.y+5]?.[p.x+dx]===1))continue;
@@ -7,8 +8,8 @@ export function createPureSlimes(world,seed=928,count=20){
  }for(let i=out.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[out[i],out[j]]=[out[j],out[i]]}return out.slice(0,count);
 }
 export const isSlime=r=>r.pure||r.big||(r.hp>0&&r.hp<=1);
-export function createBigSlimes(world){return createPureSlimes(world,928,25).slice(20).map(r=>({...r,y:r.y-8,big:true,bodyRadius:22,radiusX:22,radiusY:22}))}
-export function splitSlime(r,free){if(!r.big||r.hp>0||r.split)return [];r.split=true;const children=[];for(const [i,offset]of [-18,-6,6,18].entries()){let x=r.x+offset,y=r.y-8;if(!free(x,y,14)){x=r.x;y=r.y}children.push({x,y,spawn:x,y0:y,a:r.a,b:r.b,face:i%2?1:-1,hp:1,pure:true,child:true,state:'jump',timer:0,stun:0,vy:-180,surface:null})}return children}
+export function createBigSlimes(world){if(world.bigSpawns)return structuredClone(world.bigSpawns);return createPureSlimes(world,928,25).slice(20).map(r=>({...r,y:r.y-8,big:true,bodyRadius:22,radiusX:22,radiusY:22}))}
+export function splitSlime(r,free){if(!r.big||r.hp>0||r.split)return [];r.split=true;const children=[];for(const [i,offset]of [-18,-6,6,18].entries()){let x=r.x+offset,y=r.y-8;if(!free(x,y,14)){x=r.x;y=r.y}children.push({id:`${r.id||"big"}-child-${i}`,x,y,spawn:x,y0:y,a:r.a,b:r.b,face:i%2?1:-1,hp:1,pure:true,child:true,state:'jump',timer:0,stun:0,vy:-180,surface:null})}return children}
 function detach(r){r.surface=null;r.grounded=false;r.vy=0;r.state='rest';r.timer=.4}
 export function crawlSlime(r,physics,dt,time){
  if(!isSlime(r))return false;
