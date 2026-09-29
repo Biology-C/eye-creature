@@ -2,7 +2,7 @@
 
 ## Try both versions
 
-The original stays on `main`; the exploration rework stays on `feature/first-adventure-rework`. Game code is not merged. The preview adds gaze, wind routes, memories and checkpoint saves; desktop controls are preserved and touch devices now use a dedicated green/gray pixel handheld shell (A attack/breach, B flap, X dash).
+The original stays on `main`; the exploration rework stays on `feature/first-adventure-rework`. Game code is not merged. The preview adds gaze, wind routes, memories and checkpoint saves; desktop controls are preserved and touch devices in both versions now use a dedicated green/gray pixel handheld shell (A attack/breach, B flap, X dash).
 
 **[Choose a version](https://biology-c.github.io/eye-creature/versions/)** · [Original maze](https://biology-c.github.io/eye-creature/) · [Exploration preview](https://biology-c.github.io/eye-creature/preview/)
 
@@ -17,6 +17,12 @@ Please include the version, play time and where you got stuck in feedback. The r
 A standalone pixel-art action maze prototype. Explore the first level, collect three guiding lights, and escape as a fallen hero's eye transformed into a biological weapon.
 
 Extracted from the Mouse Maze experimental prototype. This repository now owns Eye Creature code, assets, issues and releases; Mouse Maze keeps its original adventure, educational and mechanism modes.
+
+## Original phone controls
+
+The original game now uses the same handheld touch UI as the exploration preview: green/gray pixel controls with full-color gameplay. D-pad moves/looks, B flaps/glides, A attacks or charges magic, X dashes; SELECT opens the explored map, START pauses. Hold A for 0.65s near an eligible wall with 30 energy to breach. Melee targets take priority; cancellation never spends energy. Phone mirrors are environmental objects, including the existing boss mirror. Desktop E/Q/Shift and the original map/enemy distribution remain unchanged. The original still has no reload checkpoint persistence.
+
+See [validation notes](docs/handheld-original.md). Physical iOS/Android touch feel still needs player testing.
 
 ## Run
 

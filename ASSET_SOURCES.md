@@ -20,3 +20,6 @@ The masonry in src/terrain.mjs is original procedural Canvas artwork inspired by
 The five-segment HP display is original SVG/CSS artwork based on the user-provided pixel heart/bar reference (2026-09-29); the reference image itself is not bundled. Purple large slimes recolor and scale the existing slime sprite.
 
 - Green tornado coils: original procedural Canvas rendering inspired by the user-provided green wind animation reference (2026-09-29); no reference pixels embedded. Combo slash ribbons and charge effects are also procedural.
+
+
+- 原版手機掌機介面：移植同專案探索分支的原創 CSS 像素按鍵與綠灰調色；場景鏡面為原創 Canvas 繪製，未嵌入參考照片。

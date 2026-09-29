@@ -2,7 +2,7 @@
 
 ## 兩種版本一起試玩
 
-原版保留在 `main`，探索改造版保留在 `feature/first-adventure-rework`，並未合併新版玩法。新版加入凝視、風道、勇者殘響與休息燈存檔，桌面鍵盤維持原操作；手機自動使用綠灰像素掌機介面，A 攻擊／破牆、B 拍翼、X 衝刺。
+原版保留在 `main`，探索改造版保留在 `feature/first-adventure-rework`，並未合併新版玩法。新版加入凝視、風道、勇者殘響與休息燈存檔，兩版桌面鍵盤維持原操作；手機均自動使用綠灰像素掌機介面，A 攻擊／破牆、B 拍翼、X 衝刺。
 
 **[選擇試玩版本](https://biology-c.github.io/eye-creature/versions/)** · [原版迷宮](https://biology-c.github.io/eye-creature/) · [探索改造版](https://biology-c.github.io/eye-creature/preview/)
 
@@ -17,6 +17,14 @@
 獨立的像素風動作迷宮原型。扮演被魔王軍改造成生物兵器的勇者眼球，拍翼、滑翔並穿過「殘光培養所」，找到三顆引路光點逃出出口。
 
 這是從 Mouse Maze 實驗區拆出的獨立遊戲；之後程式、素材、議題與版本均在本 repository 維護。Mouse Maze 的原始冒險、教育與機關迷宮模式繼續留在原專案。
+
+## 原版手機掌機介面
+
+用手機開啟[原版遊戲](https://biology-c.github.io/eye-creature/)即可使用與探索改造版相同的掌機布局：綠底黑像素資訊、灰階操作區，遊戲保持彩色。十字鍵移動／觀察，B 拍翼、A 攻擊／蓄力、X 衝刺，SELECT 地圖、START 暫停。
+
+面向可破牆、有 30 能量且附近沒有近戰目標時，長按 A 0.65 秒可破牆；短按仍攻擊，完成才扣能量。手機使用場景鏡面映照青影鳥，魔王房原有鏡子解除詛咒。桌面 E／Q／Shift 仍保留。
+
+原版保留原關卡與敵人數量，沒有探索改造版的休息燈重載存檔。[實作與驗收紀錄](docs/handheld-original.md)。
 
 ## 目前可玩內容
 
