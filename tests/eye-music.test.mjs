@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {createMusic,musicScene,MUSIC_VOLUME} from '../src/music.mjs';
+let plays=0,loads=0,pauses=0,gain,fail=false;
+const audio={play(){plays++;return fail?Promise.reject(Error('blocked')):Promise.resolve()},pause(){pauses++},load(){loads++},addEventListener(){}};
+const music=createMusic({makeAudio:()=>audio,makeContext:()=>({destination:{},resume:()=>Promise.resolve(),createGain(){gain={gain:{value:1},connect(){return this}};return gain},createMediaElementSource:()=>({connect:()=>gain})})});
+music.setState('title');assert.equal(plays,0);
+music.unlock();assert.equal(gain.gain.value,.2);assert.equal(MUSIC_VOLUME,.2);assert.equal(audio.loop,true);
+assert.ok(audio.src.endsWith('/title.mp3'));assert.equal(plays,1);
+for(let i=0;i<120;i++)music.setState('title');assert.equal(plays,1);assert.equal(loads,1);
+music.setState('exploration');assert.ok(audio.src.endsWith('/exploration.mp3'));
+music.setState('boss');assert.ok(audio.src.endsWith('/boss.mp3'));
+music.setState('boss',true);const count=plays;music.setMuted(true);music.setState('exploration');assert.equal(plays,count);
+music.setMuted(false);assert.ok(audio.src.endsWith('/exploration.mp3'));assert.equal(plays,count+1);
+music.setState('exploration',true);const beforeLoad=loads;music.setState('exploration');assert.equal(loads,beforeLoad,'resume must not restart track');
+assert.equal(musicScene('intro',{active:true,hp:30}),'title');
+assert.equal(musicScene('playing',{active:true,hp:30}),'boss');
+assert.equal(musicScene('playing',{active:true,hp:0}),'exploration');
+assert.equal(musicScene('playing',{active:false,hp:30}),'exploration');
+assert.equal(musicScene('won',{active:true,hp:0}),'title');
+fail=true;music.setState('title');await new Promise(r=>setTimeout(r,0));assert.ok(music.snapshot().error);
+const failedPlays=plays;for(let i=0;i<60;i++)music.setState('title');assert.equal(plays,failedPlays,'no autoplay retry loop');
+fail=false;music.unlock();await new Promise(r=>setTimeout(r,0));assert.equal(music.snapshot().error,false);assert.ok(pauses>0);
+const loaded=loads;
+for(const level of [1,.75,.5,.2,.1,0]){
+ music.setVolume(level);assert.equal(gain.gain.value,level);assert.equal(music.snapshot().volume,level);assert.equal(music.snapshot().muted,level===0);
+}
+assert.equal(loads,loaded,'volume changes must not reload the song');
+music.setMuted(false);assert.equal(gain.gain.value,.1,'restore previous audible volume');
+music.setState('boss');assert.equal(gain.gain.value,.1,'scene change preserves volume');
+assert.throws(()=>music.setVolume(2),RangeError);
+console.log('Music gain, switching, pause, mute, recovery and no autoplay: passed');

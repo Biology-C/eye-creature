@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>眼球怪 · 程式音效試聽</title>
+<style>
+:root{color-scheme:dark;--bg:#111a1d;--card:#1b282c;--line:#2e4248;--text:#e6efe9;--muted:#9fb3ad;--accent:#7fd6c4}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 system-ui,"Noto Sans TC",sans-serif}
+main{max-width:860px;margin:0 auto;padding:24px 16px}h1{font-size:22px;margin:0 0 4px}p{color:var(--muted);margin:0 0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.card h2{font-size:16px;margin:0}.card small{color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button{background:#24373c;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer;min-height:40px}
+button:hover{border-color:var(--accent)}button.primary{background:#2b5750}
+kbd{background:#0c1315;border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:12px}
+.bar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:0 0 16px}
+</style>
+<main>
+<h1>程式音效試聽</h1>
+<p>以 Web Audio 即時合成，無音檔。每次播放都有少許隨機變化，可多按幾次比較。「下載 WAV」會輸出 44.1kHz 單聲道檔。</p>
+<div class="bar"><label>音量 <input id="vol" type="range" min="0" max="1" step="0.05" value="0.7"></label><span>鍵盤：<kbd>1</kbd>–<kbd>3</kbd> 斬擊、<kbd>4</kbd> 光彈、<kbd>5</kbd> 滿蓄力彈、<kbd>6</kbd> 拾取、<kbd>7</kbd> 衝刺、按住 <kbd>8</kbd> 蓄力</span></div>
+<div class="grid" id="grid"></div>
+</main>
+<script type="module">
+import {createSfx,renderSfx,encodeWav} from '../../src/sfx.mjs';
+const sfx=createSfx();
+const items=[
+ ['slash1','第一段：直斬','細、快的揮空','1'],
+ ['slash2','第二段：迴旋斬','較飽滿，帶微弱刃鳴','2'],
+ ['slash3','第三段：十字斬','兩道交叉＋低頻重量，不爆炸','3'],
+ ['shot','普通光彈','清亮下滑，不刺耳','4'],
+ ['chargedShot','滿蓄力光彈','更大、更低的釋放','5'],
+ ['pickup','拾取','1.2 秒內連續拾取會逐步升調','6'],
+ ['dash','衝刺','短促氣流','7'],
+ ['charge','蓄力（按住）','0.8 秒升到滿，滿時響提示音；放開即停','8'],
+];
+const grid=document.getElementById('grid');
+for(const [name,title,desc,key] of items){
+ const card=document.createElement('section');card.className='card';
+ card.innerHTML=`<h2>${title} <kbd>${key}</kbd></h2><small>${desc}</small><div class="row"></div>`;
+ const row=card.querySelector('.row'),play=document.createElement('button');play.className='primary';
+ if(name==='charge'){
+  play.textContent='按住蓄力';
+  const start=e=>{e.preventDefault();sfx.startCharge()},stop=()=>sfx.stopCharge();
+  play.addEventListener('pointerdown',start);for(const ev of ['pointerup','pointerleave','pointercancel'])play.addEventListener(ev,stop);
+ }else play.textContent='播放',play.onclick=()=>sfx.play(name);
+ row.append(play);
+ if(name==='slash1'){const combo=document.createElement('button');combo.textContent='連段 1→2→3';combo.onclick=()=>{sfx.play('slash1');setTimeout(()=>sfx.play('slash2'),320);setTimeout(()=>sfx.play('slash3'),640)};row.append(combo)}
+ if(name==='pickup'){const streak=document.createElement('button');streak.textContent='連續拾取 ×6';streak.onclick=()=>{sfx.play('pickup');for(let i=1;i<6;i++)setTimeout(()=>sfx.play('pickup'),i*180)};row.append(streak);
+  const relic=document.createElement('button');relic.textContent='藏品';relic.onclick=()=>sfx.play('pickup',{kind:'relic'});row.append(relic)}
+ const dl=document.createElement('button');dl.textContent='下載 WAV';dl.onclick=async()=>{const {samples,sampleRate}=await renderSfx(name);const a=document.createElement('a');a.href=URL.createObjectURL(encodeWav(samples,sampleRate));a.download=`eye-${name}.wav`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+ row.append(dl);grid.append(card);
+}
+document.getElementById('vol').oninput=e=>sfx.volume=+e.target.value;
+const keyMap=Object.fromEntries(items.map(i=>[i[3],i[0]]));
+addEventListener('keydown',e=>{const n=keyMap[e.key];if(!n||e.repeat)return;n==='charge'?sfx.startCharge():sfx.play(n)});
+addEventListener('keyup',e=>{if(e.key==='8')sfx.stopCharge()});
+addEventListener('blur',()=>sfx.stopCharge());
+document.addEventListener('visibilitychange',()=>{if(document.hidden)sfx.stopCharge()});
+// For automated checks: render every sound offline and report duration / peak / RMS.
+window.sfxStats=async()=>{const out={};for(const [name] of items){const {samples,sampleRate}=await renderSfx(name);let peak=0,sum=0,bad=0;for(const s of samples){if(!Number.isFinite(s))bad++;const a=Math.abs(s);peak=Math.max(peak,a);sum+=s*s}out[name]={seconds:samples.length/sampleRate,peak,rms:Math.sqrt(sum/samples.length),bad}}return out};
+</script>
+</html>

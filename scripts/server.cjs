@@ -1,6 +1,6 @@
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
-const types={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.png':'image/png','.md':'text/plain'};
+const types={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.png':'image/png','.mp3':'audio/mpeg','.wav':'audio/wav','.md':'text/plain'};
 function createServer(){return http.createServer((req,res)=>{let rel;try{rel=decodeURIComponent(new URL(req.url,'http://localhost').pathname)}catch{res.writeHead(400);return res.end()}
  if(rel.startsWith('/eye-creature/'))rel=rel.slice('/eye-creature'.length);
  let file=path.resolve(root,'.'+rel);if(file!==root&&!file.startsWith(root+path.sep)){res.writeHead(403);return res.end()}

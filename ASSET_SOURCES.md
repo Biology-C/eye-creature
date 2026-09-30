@@ -1,5 +1,20 @@
 # Asset sources
 
+- 戰鬥、蓄力、拾取及衝刺音效為 Web Audio 原創程式合成，不含音檔。`src/sfx.mjs` 與 `previews/sfx/` 取自使用者提供的 `eye-creature-sfx.patch`；既有 `src/cues.mjs` 保留發現、清除障礙及存檔提示音。
+- `assets/sfx/wall-break.wav`：使用者於2026-09-30提供「拆牆音效.wav」，原檔直接複製（5秒、16kHz、單聲道）。成功破牆時取代合成提示；載入失敗時使用原提示音。此來源紀錄不宣稱音檔作者或可自由再利用授權。
+
+## Exploration background music (2026-09-30)
+
+The project owner supplied these recordings for the exploration version. Files are copied unchanged; playback gain defaults to 0.20 and is adjustable. Original titles are preserved here for attribution. No claim of authorship, exclusive ownership, or permission to reuse the underlying compositions is made by this record; these recordings are not offered as freely reusable assets under the project code license.
+
+| File | Supplied title | Scene |
+|---|---|---|
+| assets/music/title.mp3 | Safe Haven NES Cover | Title / completion |
+| assets/music/boss.mp3 | 紅熊魔王 - Red Bear Overlord (Alt) | Living, active red bear boss |
+| assets/music/exploration.mp3 | Pure 8-Bit Chiptune Ambient Cover | Exploration / return after death / defeated boss |
+
+Author and original source URLs were not supplied. This addition applies only to `feature/first-adventure-rework`; original-mode `main` is unchanged.
+
 The runtime and concept images below were created with OpenAI image generation during the owner's iterative Eye Creature design sessions. They are not extracted from Hollow Knight, Contra, MapleStory or reference screenshots. User-supplied reference screenshots are not included in this repository.
 
 | Files | Purpose / record |

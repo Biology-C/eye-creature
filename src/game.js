@@ -1,3 +1,6 @@
+import {createSfx} from './sfx.mjs';
+import {SFX_LEVELS,SFX_DEFAULT,SFX_KEY,MUSIC_KEY,readAudioLevel,saveAudioLevel} from './audio-settings.mjs';
+import {createMusic,musicScene,MUSIC_VOLUME,MUSIC_LEVELS} from './music.mjs';
 import {BREACH_HOLD,attackIntent,validBreachHold,bindTouchControls,createSceneMirrors,drawSceneMirrors} from './handheld.mjs';
 import {buildAdventure} from './adventure.mjs';
 import {createExploration,updateGaze,syncWinds,windAt,hitObstacle,collectEchoes,syncStumps,updateCamera} from './exploration.mjs';
@@ -35,30 +38,55 @@ const keys=new Set(),seen=new Set();let drawHero,ratImage,faunaImage,faunaFrames
 let dashHits=new Set(),boss=createBoss(world),slashStyle=0,struck=new Set(),hitStop=0,hurtUntil=0,magic=createMagic(),dashTrail=[],fauna,player,rats,lights,rewards,torches,crackedWalls,pickupFlash,checkpoint,activated,kills,deaths,noticeUntil=0,attackUntil=0,nextAttack=0,slash=null;
 let attackHeld=false,chargeStart=null,comboStage=0,comboUntil=0,comboQueue=0,breachHold=null,breachConsumed=false;
 let clearTouch=()=>{};
-function cancelAttackInput(){breachHold=null;breachConsumed=false;attackHeld=false;chargeStart=null;comboStage=0;comboUntil=0;comboQueue=0;keys.delete("attack")}
+const sfx=createSfx({volume:SFX_DEFAULT});let lastSfxVolume=SFX_DEFAULT;
+function setSfxVolume(value,persist=true){
+ if(!SFX_LEVELS.includes(value))return;
+ if(value>0)lastSfxVolume=value;
+ sfx.volume=value;sfx.muted=value===0;cues.volume=value;cues.muted=value===0;
+ $('#sfx-volume').value=String(Math.round(value*100));
+ $('#sound').textContent=value===0?'音效：關':'音效：開';$('#sound').setAttribute('aria-pressed',String(value===0));
+ if(persist)saveAudioLevel(SFX_KEY,value);
+}
+setSfxVolume(readAudioLevel(SFX_KEY,SFX_LEVELS,SFX_DEFAULT,'eye-creature.sound-muted'),false);
+$('#sfx-volume').onchange=()=>setSfxVolume(Number($('#sfx-volume').value)/100);
+
+let musicInBackground=false;
+const music=createMusic({onChange:state=>{
+ const button=$('#music');
+ const percent=Math.round(state.volume*100);
+ button.textContent=state.error?'音樂未能播放・點此重試':state.muted?'背景音樂：關':!state.unlocked?`播放標題音樂 · ${percent}％`:`背景音樂：${percent}％`;
+ $('#music-volume').value=String(state.muted?0:percent);
+ button.setAttribute('aria-pressed',String(state.unlocked&&!state.muted));
+}});
+function syncMusic(){music.setState(musicScene(mode,boss),musicInBackground||document.hidden||mode==='paused'||mode==='loading')}
+$('#music').onclick=()=>{const state=music.snapshot();syncMusic();if(state.muted){music.setMuted(false);music.unlock()}else if(state.error||!state.unlocked)music.unlock();else music.setMuted(true);saveAudioLevel(MUSIC_KEY,music.snapshot().muted?0:music.snapshot().volume)};
+$('#music-volume').onchange=()=>{syncMusic();music.setVolume(Number($('#music-volume').value)/100);if(!music.snapshot().muted)music.unlock();saveAudioLevel(MUSIC_KEY,music.snapshot().muted?0:music.snapshot().volume)};
+music.setVolume(readAudioLevel(MUSIC_KEY,MUSIC_LEVELS,MUSIC_VOLUME));
+
+function cancelAttackInput(){sfx.stopCharge();breachHold=null;breachConsumed=false;attackHeld=false;chargeStart=null;comboStage=0;comboUntil=0;comboQueue=0;keys.delete("attack")}
 function reset(){clearTouch();exploration=createExploration(world);cameraSnap=true;nearLamp=null;cancelAttackInput();dashHits.clear();boss=createBoss(world);struck.clear();hitStop=0;hurtUntil=0;magic=createMagic();dashTrail=[];world.platforms.splice(0,world.platforms.length,...originalPlatforms.map(p=>({...p})));map.forEach((row,y)=>row.splice(0,row.length,...originalMap[y]));fauna=createFauna(world);crackedWalls=createCrackedWalls(world);player={...world.start,hp:MAX_HP,abilities:{},healCharge:0,dashRemaining:0,dashCooldown:0,energy:0,face:1,inv:0,vy:0,wing:MAX_WING,grounded:false};rats=[...world.rats,...createPureSlimes(world),...createBigSlimes(world)].map((r,i)=>({...r,spawn:r.x,y0:r.y,face:i%2?-1:1,hp:r.big?3:r.pure?1:2,surface:null,state:'walk',timer:0,stun:0,vy:0}));lights=world.lights.map(l=>({...l,got:false}));rewards=createRewards(world);torches=createTorches(world);pickupFlash=null;checkpoint={...world.start};activated=new Set();kills=0;deaths=0;time=0;nextAttack=0;attackUntil=0;slash=null;seen.clear();keys.clear();updateHud()}
 function phoneText(message){return !handheld?message:message.replaceAll('Space','A').replaceAll('Shift','X').replaceAll('按住 ↑ 拍翼','按住 B 拍翼').replaceAll('↑ 拍翼','B 拍翼').replaceAll('按 E 打通','長按 A 打通').replaceAll('按 Q 使用鏡面','靠近場景鏡面').replaceAll('按 Q 映出鏡像','靠近場景鏡面映出鏡像').replaceAll('用 Q 或左側鏡子破解','靠近左側鏡子破解')}
 function say(message,duration=4){$('#notice').textContent=phoneText(message);noticeUntil=time+duration}
 function updateHud(){$('#abilities').textContent='能力：'+(['spread','dash','breach'].filter(k=>player.abilities[k]).map(k=>({spread:'三向光彈',dash:'傷害衝刺',breach:'普通牆破壞'})[k]).join('／')||'尚未取得');$('#energy').textContent=`${handheld?'破牆':'破牆能量'} ${player.energy} / ${BREACH_COST}`;$('#hearts').innerHTML=healthMarkup(player.hp);$('#healing').textContent=`藍能回血 ${player.healCharge}% / 100%`;$('#hearts').setAttribute('aria-label',`生命 ${player.hp} / ${MAX_HP}`);$('#quest').textContent=`${handheld?'光點':'引路光點'} ${lights.filter(p=>p.got).length} / 3`;$('#relics').textContent=`藏品 ${rewards.filter(r=>r.kind==='relic'&&r.got).length} / ${rewards.filter(r=>r.kind==='relic').length}`}
 function panel(title,description,label){$('#map-panel').hidden=!handheld||mode!=='paused';if(handheld&&mode==='paused')drawJourneyMap();$('#pause-details').hidden=mode!=='paused';$('#continue').hidden=true;$('#title').textContent=title;$('#description').textContent=description;$('#start').textContent=label;$('#overlay').hidden=false;$('#restart').hidden=mode!=='paused'}
 function refreshMemories(){const list=$('#memories');list.replaceChildren();for(const e of exploration.echoes){const li=document.createElement('li');li.textContent=e.got?e.text:'尚未找到的殘響';list.append(li)}}
-function pause(){refreshMemories();if(mode==='playing'){mode='paused';clearTouch();keys.clear();cancelAttackInput();$('#save-status').textContent='重新整理會回到最近休息燈；繼續探索保留目前進度。';panel('休息一下','探索進度保留，準備好再繼續。','繼續探索')}else if(mode==='paused')resume()}
-function resume(){mode='playing';$('#overlay').hidden=true;last=0;canvas.focus()}
+function pause(){refreshMemories();if(mode==='playing'){mode='paused';syncMusic();clearTouch();keys.clear();cancelAttackInput();$('#save-status').textContent='重新整理會回到最近休息燈；繼續探索保留目前進度。';panel('休息一下','探索進度保留，準備好再繼續。','繼續探索')}else if(mode==='paused')resume()}
+function resume(){sfx.unlock();sfx.loadSample('breakWall',new URL('../assets/sfx/wall-break.wav',import.meta.url));cues.unlock();mode='playing';musicInBackground=false;syncMusic();music.unlock();$('#overlay').hidden=true;last=0;canvas.focus()}
 function newAdventure(){if(!legacy&&saveInfo.status!=='empty'&&!confirm('開始新冒險會覆蓋休息燈存檔。確定嗎？'))return;try{if(!legacy)localStorage.removeItem(SAVE_KEY)}catch{say('無法清除舊存檔；本次遊戲仍可繼續。')}reset();saveInfo={status:'empty'};$('#continue').hidden=true;resume()}
 $('#start').onclick=()=>{if(mode==='won'||mode==='intro'&&saveInfo.status!=='empty'){newAdventure();return}if(new URLSearchParams(location.search).has('boss-preview')&&!boss.active){lights.forEach(l=>l.got=true);beginBoss()}resume();cues.play('start')};$('#restart').onclick=newAdventure;$('#pause').onclick=pause;
-$('#sound').onclick=()=>{cues.muted=!cues.muted;$('#sound').textContent=cues.muted?'音效：關':'音效：開'};
+$('#sound').onclick=()=>setSfxVolume(sfx.muted?lastSfxVolume:0);
 $('#continue').onclick=()=>{if(saveInfo.status==='ready'&&restoreCheckpoint(saveInfo.data))resume()};
 $('#theme').onclick=()=>{light=!light;document.body.classList.toggle('light',light);$('#theme').textContent=light?'深色':'淺色';if(mode==='playing')canvas.focus()};
 function motionLabel(){$('#motion').setAttribute('aria-pressed',reduced);$('#motion').textContent=reduced?'減少動態：開':'減少動態：關'}motionLabel();$('#motion').onclick=()=>{reduced=!reduced;motionLabel();if(mode==='playing')canvas.focus()};
 $('#slash-style').onclick=()=>{slashStyle=(slashStyle+1)%3;$('#slash-style').textContent='斬擊：'+SLASH_STYLES[slashStyle];if(mode==='playing')canvas.focus()};
 $('#hint').onclick=()=>{if(mode!=='playing')return;canvas.focus();const remaining=lights.filter(l=>!l.got),target=remaining.length?remaining.sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y))[0]:world.exit;const dx=target.x-player.x,dy=target.y-player.y;say(`${remaining.length?'光點':'出口'}訊號大約在${Math.abs(dy)>100?(dy<0?'北':'南'):''}${Math.abs(dx)>100?(dx<0?'西':'東'):''}方。牆後可能要繞路。`,6)};
 function wallTarget(touch=false){const direction=keys.has('down')?'down':keys.has(touch?'lookUp':'up')?'up':null;return nearbyWall(player,crackedWalls,direction)||ordinaryWall(player,world,direction)}
-function performBreach(wall){if(!breakWall(player,wall,map,T,world.platforms))return false;if(wall.ordinary)crackedWalls.push(wall);wall.discovered=true;wall.changedAt=time;syncWinds(exploration,crackedWalls);cues.play('break');updateHud();say('消耗 30 點能量，牆面破開！捷徑已打通。',4);return true}
+function performBreach(wall){if(!breakWall(player,wall,map,T,world.platforms))return false;if(wall.ordinary)crackedWalls.push(wall);wall.discovered=true;wall.changedAt=time;syncWinds(exploration,crackedWalls);if(!sfx.play('breakWall'))cues.play('break');updateHud();say('消耗 30 點能量，牆面破開！捷徑已打通。',4);return true}
 function breach(){if(mode!=='playing')return;canvas.focus();const wall=wallTarget();if(!wall){say('靠近裂面：左右面向它，上下按住 ↑／↓ 再按 E 或破牆。',3);return}if(!performBreach(wall))say(`還差 ${BREACH_COST-player.energy} 點破牆能量。`,3)}
 $('#breach').onclick=breach;
 function mirror(){if(mode!=='playing')return;canvas.focus();const count=mirrorFauna(fauna,player,time,clearPath);if(count>=0&&boss.cursed){boss.cursed=false;say('鏡面破解認知顛倒！',3);return}if(count>=0)say(count?`鏡面映出 ${count} 隻青影鳥，牠們正在攻擊自己的倒影！`:'鏡面展開，附近沒有青影鳥。',3)}
 $('#mirror').onclick=mirror;
-function dash(){if(mode!=='playing')return;canvas.focus();const direction=Number(keys.has('right'))-Number(keys.has('left'));if(direction)player.face=direction;if(startDash(player))dashHits.clear()}
+function dash(){if(mode!=='playing')return;canvas.focus();const direction=Number(keys.has('right'))-Number(keys.has('left'));if(direction)player.face=direction;if(startDash(player)){dashHits.clear();sfx.play('dash')}}
 $('#dash').onclick=dash;
 function lightMagic(){if(mode!=='playing')return;canvas.focus();say('目前魔法：光彈。取得其他魔法後，按 F 切換。',3)}
 $('#magic').onclick=lightMagic;
@@ -71,7 +99,7 @@ const touchKeys=new Map();
 function touchKey(k){return k==='flap'?'up':handheld&&k==='up'?'lookUp':k}
 clearTouch=bindTouchControls($('.touch'),{playing:()=>mode==='playing',down:k=>{const key=touchKey(k);touchKeys.set(k,key);keys.add(key);if(k==='attack')pressAttack(handheld)},up:k=>{const key=touchKeys.get(k);touchKeys.delete(k);if(![...touchKeys.values()].includes(key))keys.delete(key);if(k==='attack')releaseAttack()},cancel:k=>{const key=touchKeys.get(k);touchKeys.delete(k);if(![...touchKeys.values()].includes(key))keys.delete(key);if(k==='attack')cancelAttackInput()}});
 if(handheld){$('#dash').onclick=null;$('#dash').onpointerdown=e=>{e.preventDefault();dash()};$('.touch').oncontextmenu=e=>e.preventDefault()}
-window.addEventListener('blur',()=>{keys.clear();if(mode==='playing')pause()});document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='playing')pause()});
+window.addEventListener('blur',()=>{musicInBackground=true;keys.clear();if(mode==='playing')pause();syncMusic()});window.addEventListener('focus',()=>{musicInBackground=false;syncMusic()});document.addEventListener('visibilitychange',()=>{musicInBackground=document.hidden;if(document.hidden&&mode==='playing')pause();syncMusic()});
 function free(x,y,r=11){if(!physics.free(x,y,r))return false;return ![[x-r,y-r],[x+r,y-r],[x-r,y+r],[x+r,y+r]].some(([a,b])=>solid(a,b))}
 function move(o,dx,dy){const n=Math.max(1,Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))/6));for(let i=0;i<n;i++){if(free(o.x+dx/n,o.y))o.x+=dx/n;if(free(o.x,o.y+dy/n))o.y+=dy/n}}
 function clearPath(ax,ay,bx,by){const n=Math.ceil(Math.hypot(bx-ax,by-ay)/6),target=exploration.obstacles.find(o=>o.x===bx&&o.y===by);for(let i=0;i<=n;i++){const x=ax+(bx-ax)*i/Math.max(1,n),y=ay+(by-ay)*i/Math.max(1,n);if(solid(x,y)||exploration.obstacles.some(o=>o!==target&&!o.broken&&x>o.x-o.w/2&&x<o.x+o.w/2&&y>o.y-o.h/2&&y<o.y+o.h/2))return false}return true}
@@ -83,16 +111,18 @@ function applyMelee(){
  kills+=hit.killed;syncStumps(world.platforms,fauna.trees);if(hit.felled)say('樹妖倒下，驚出了青影鳥！按 Q 使用鏡面。',4);
  for(const r of rats.filter(e=>targets.includes(e))){r.hp=Math.max(0,r.hp-1);r.state='rest';r.timer=.7;r.stun=time+.6;if(r.hp===1&&!r.pure&&!r.big)say('水晶碎開，老鼠變成綠色史萊姆！',2);if(!r.hp)kills++}
 }
-function attack(stage=1){nextAttack=time+.32;attackUntil=time+.30;slash={x:player.x,y:player.y,face:player.face,stage};struck.clear();applyMelee()}
+function attack(stage=1){nextAttack=time+.32;attackUntil=time+.30;slash={x:player.x,y:player.y,face:player.face,stage};struck.clear();applyMelee();if(!player.slimeForm)sfx.play('slash'+stage)}
 function nearEnemy(){return [...exploration.obstacles,...rats,...fauna.trees,...fauna.birds,...(boss.active?[boss]:[])].some(e=>inMelee(player,e,clearPath))}
 function nextCombo(){comboStage=time<=comboUntil?comboStage%3+1:1;comboUntil=time+.85;attack(comboStage)}
 function pressAttack(touch=false){if(mode!=='playing'||attackHeld)return;attackHeld=true;
- if(touch&&handheld&&attackIntent({melee:nearEnemy(),combo:comboStage&&time<=comboUntil,wall:wallTarget(true),energy:player.energy,cost:BREACH_COST})==='breach'){breachHold={id:wallTarget(true).id,start:time};breachConsumed=false;chargeStart=null;return}
+ if(touch&&handheld&&attackIntent({melee:nearEnemy(),combo:comboStage&&time<=comboUntil,wall:wallTarget(true),energy:player.energy,cost:BREACH_COST})==='breach'){breachHold={id:wallTarget(true).id,start:time};breachConsumed=false;chargeStart=null;sfx.stopCharge();return}
  if(nearEnemy()||(comboStage&&time<=comboUntil)){if(time>=nextAttack)nextCombo();else comboQueue=Math.min(2,comboQueue+1)}
  else if(time>=nextAttack&&time>=magic.ready)chargeStart=time;
 }
-function releaseAttack(){if(!attackHeld)return;attackHeld=false;if(breachHold||breachConsumed){const quick=breachHold&&!breachConsumed;breachHold=null;breachConsumed=false;if(quick&&mode==='playing'&&castLight(magic,player,time,false))nextAttack=time+.5;return}if(mode==='playing'&&chargeStart!==null){if(castLight(magic,player,time,time-chargeStart>=.8))nextAttack=time+.5}chargeStart=null}
-function autoAttack(){if(nearEnemy())attack();else if(castLight(magic,player,time))nextAttack=time+.5}
+function fireLight(charged=false){const fired=castLight(magic,player,time,charged);if(fired)sfx.play(charged?'chargedShot':'shot');return fired}
+function syncChargeSound(){const on=mode==='playing'&&player&&!player.slimeForm&&chargeStart!==null&&time-chargeStart>=.12;if(on)sfx.startCharge(time-chargeStart,.8);else sfx.stopCharge()}
+function releaseAttack(){sfx.stopCharge();if(!attackHeld)return;attackHeld=false;if(breachHold||breachConsumed){const quick=breachHold&&!breachConsumed;breachHold=null;breachConsumed=false;if(quick&&mode==='playing'&&fireLight(false))nextAttack=time+.5;return}if(mode==='playing'&&chargeStart!==null){if(fireLight(time-chargeStart>=.8))nextAttack=time+.5}chargeStart=null}
+function autoAttack(){if(nearEnemy())attack();else if(fireLight(false))nextAttack=time+.5}
 function hurt(source='老鼠',damage=1){if(time<player.inv)return;if(breachHold){breachHold=null;breachConsumed=true}hurtUntil=time+.35;hitStop=Math.max(hitStop,.07);magic.effects.push({x:player.x,y:player.y,kind:'hurt',damage,until:time+.24});player.hp=Math.max(0,player.hp-damage);player.inv=time+1.5;updateHud();if(player.hp<=0){clearTouch();deaths++;cameraSnap=true;nearLamp=null;cancelAttackInput();resetBoss(boss);magic=createMagic();dashTrail=[];resetFaunaAfterDeath(fauna);player.x=checkpoint.x;player.y=checkpoint.y;player.hp=MAX_HP;player.vy=0;player.dashRemaining=0;player.dashCooldown=0;player.wing=MAX_WING;player.grounded=false;player.inv=time+2;attackUntil=0;slash=null;for(const r of rats)if(r.hp){r.x=r.spawn;r.y=r.y0;r.state='walk';r.surface=null;r.crawlDown=false;r.timer=0;r.stun=0;r.vy=0}say('回到休息燈旁，生命補滿。已找到的光點保留。',5);updateHud()}else say(source==='針刺'?'碰到針刺了！看地面倒數，收起後再通過。':'被敵人碰到了！暫時不會再受傷。',2)}
 function beginBoss(){clearTouch();if(!legacy&&!boss.active){checkpoint={...world.safes.at(-1)};player.hp=MAX_HP;activated.add(world.safes.length-1);saveCheckpoint()}cameraSnap=true;cancelAttackInput();if(new URLSearchParams(location.search).has('boss-preview'))document.querySelector('h1 span').textContent='紅熊試玩';enterBoss(boss,player,world.arena);if(legacy)checkpoint={...world.exit};magic=createMagic();fauna.mirrorReady=time;attackUntil=0;slash=null;keys.clear();updateHud();say('紅熊守住出口！30 點生命；紅框時閃避，認知顛倒用 Q 或左側鏡子破解。',8)}
 function teach(id,condition,message){exploration.teaching??=[];if(condition&&!exploration.tutorials.includes(id)&&!exploration.teaching.some(t=>t.id===id))exploration.teaching.push({id,message});}
@@ -135,6 +165,7 @@ if(handheld&&time>=fauna.mirrorReady){const m=sceneMirrors.find(m=>Math.hypot(m.
 kills+=updateFauna(fauna,player,time,dt,{clear:clearPath,free,hurt,regionAt:world.regionAt,visible:b=>{const cx=camera.x,cy=camera.y;return b.x>=cx&&b.x<=cx+canvas.width&&b.y>=cy&&b.y<=cy+canvas.height}});updateBoss(boss,player,dt,time,{clear:clearPath,hurt});if(boss.active&&boss.cursed&&Math.hypot(player.x-world.arena.mirror.x,player.y-world.arena.mirror.y)<40){boss.cursed=false;say('碰到鏡子，認知顛倒解除！',3)}$('#mirror').textContent=time>=fauna.mirrorReady?'鏡面 Q':`鏡面 ${Math.ceil(fauna.mirrorReady-time)}s`;
 for(const trap of world.traps)if(trapSupported(trap,solid)&&touchesSpikes(player,trap,time)){hurt('針刺');break}
 for(const reward of rewards)if(!reward.got&&Math.hypot(player.x-reward.x,player.y-reward.y)<26&&clearPath(player.x,player.y,reward.x,reward.y)&&collectReward(reward,player,MAX_WING,time)){
+ sfx.play('pickup',reward.kind==='relic'?{kind:'relic'}:{});
  pickupFlash={x:reward.x,y:reward.y,until:time+.7,kind:reward.kind,amount:reward.amount||1,healed:reward.healed||0,percent:Math.round((reward.restored||0)/MAX_WING*100)};updateHud();say(reward.kind==='energy'?`破牆能量 +${reward.amount||1}（${player.energy}/${BREACH_COST}）${player.energy>=BREACH_COST?'，可以打破裂牆！':''}`:reward.kind==='wing'?`藍能 +40%・翼能 +${Math.round(reward.restored/MAX_WING*100)}%${reward.healed?'・回復半顆心！':reward.healCycles?'・生命已滿':''}（回血進度 ${player.healCharge}%）`:`找到藏品：${reward.name}。能力已解鎖，本次冒險持續有效。`,reward.kind==='wing'?2:4);
 }
 for(const l of lights)if(!l.got&&Math.hypot(player.x-l.x,player.y-l.y)<30){l.got=true;updateHud();say(lights.every(p=>p.got)?'三顆光點齊了！感應出口方向，繼續前進。':'找到引路光點！繼續探索上下岔路。')}
@@ -148,7 +179,7 @@ if(collectEchoes(exploration,player,time,fighting))cues.play('discover');
 runTutorials();
 const melee=nearEnemy()||(comboStage>0&&time<=comboUntil);$('#attack-mode').textContent=chargeStart!==null?'蓄力光彈':melee?'✦ 近戰連斬':'◉ 光彈';$('#attack-mode').dataset.melee=melee;
 $('#region').textContent=boss.active?'紅熊守門室':world.regions?.[world.regionAt(player.x,player.y)]?.name||'探索中';
-updateCamera(camera,player,canvas.width,canvas.height,{w:W*T,h:H*T},dt,cameraSnap);cameraSnap=false;
+updateCamera(camera,player,canvas.width,canvas.height,{w:W*T,h:H*T},dt,cameraSnap,{gentleDesktop:!handheld,moveDirection:Number(keys.has('right'))-Number(keys.has('left'))});cameraSnap=false;
 discoverTorches(torches,player,clearPath);
 const cx=Math.floor(player.x/T),cy=Math.floor(player.y/T);for(let y=cy-4;y<=cy+4;y++)for(let x=cx-6;x<=cx+6;x++)if(map[y]?.[x]===0)seen.add(`${x},${y}`);
 if(handheld){const intent=attackIntent({melee,combo:false,wall:wallTarget(true),energy:player.energy,cost:BREACH_COST});$('.attack').dataset.intent=intent;$('.attack small').textContent=breachHold?Math.floor((time-breachHold.start)/BREACH_HOLD*100)+'%':intent==='breach'?'長按破牆':chargeStart!==null?'蓄力':'攻擊';if(breachHold)$('#notice').textContent=`破牆蓄力 ${Math.min(100,Math.floor((time-breachHold.start)/BREACH_HOLD*100))}% · 放開可取消`;else if(time>noticeUntil)$('#notice').textContent=intent==='breach'?'靠近裂牆 · 長按 A 破牆（30 能量）':'十字鍵移動／觀察 · B 拍翼 · A 攻擊 · X 衝刺'}
@@ -156,7 +187,7 @@ else if(time>noticeUntil){$('#notice').textContent='← → 移動 · ↑ 拍翼
 }
 function rect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),w,h)}
 function text(t,x,y,c='#c5d9c5',size=13){g.fillStyle=c;g.font=`${size}px system-ui`;g.fillText(t,Math.round(x),Math.round(y))}
-function render(){$('#critical-vignette').style.opacity=criticalOpacity(player.hp,time,reduced);g.imageSmoothingEnabled=false;if(cameraSnap){updateCamera(camera,player,canvas.width,canvas.height,{w:W*T,h:H*T},0,true);cameraSnap=false}g.fillStyle=light?'#b6c5ae':'#14292e';g.fillRect(0,0,canvas.width,canvas.height);g.save();g.translate(-Math.round(camera.x),-Math.round(camera.y));
+function render(){$('#critical-vignette').style.opacity=criticalOpacity(player.hp,time,reduced);g.imageSmoothingEnabled=false;if(cameraSnap){updateCamera(camera,player,canvas.width,canvas.height,{w:W*T,h:H*T},0,true,{gentleDesktop:!handheld,moveDirection:0});cameraSnap=false}g.fillStyle=light?'#b6c5ae':'#14292e';g.fillRect(0,0,canvas.width,canvas.height);g.save();g.translate(-Math.round(camera.x),-Math.round(camera.y));
 drawTerrain(g,map,T,camera,canvas.width,canvas.height,light,world.regionAt);
 drawExploration(g,exploration,world,player,time,reduced,camera,canvas,crackedWalls);if(handheld)drawSceneMirrors(g,sceneMirrors,time,fauna.mirrorReady);
 for(const w of crackedWalls){if(w.broken||world.version&&!w.discovered||w.x>camera.x+canvas.width||w.x+w.w<camera.x||w.y>camera.y+canvas.height||w.y+w.h<camera.y)continue;rect(w.x,w.y,w.w,w.h,'#625047');g.strokeStyle='#f0ae6b';g.lineWidth=3;if(w.axis==='vertical'){for(const oy of [8,w.h-8]){g.beginPath();g.moveTo(w.x+4,w.y+oy);g.lineTo(w.x+25,w.y+oy+4);g.lineTo(w.x+48,w.y+oy-3);g.lineTo(w.x+70,w.y+oy+3);g.lineTo(w.x+w.w-4,w.y+oy);g.stroke()}}else for(const ox of [8,w.w-8]){g.beginPath();g.moveTo(w.x+ox,w.y+4);g.lineTo(w.x+ox+4,w.y+24);g.lineTo(w.x+ox-3,w.y+42);g.lineTo(w.x+ox+3,w.y+66);g.lineTo(w.x+ox,w.y+w.h-4);g.stroke()}text(w.axis==='vertical'?'↑↓ 裂面 30':'裂牆 · 30',w.x+9,w.y+48,'#ffe0b1',12)}
@@ -217,7 +248,7 @@ text(`${Math.floor(time/60)}:${String(Math.floor(time%60)).padStart(2,'0')}`,14,
 
 }
 function drawJourneyMap(){const c=$('#journey-map'),ctx=c.getContext('2d'),scale=Math.min((c.width-24)/W,(c.height-24)/H),ox=(c.width-W*scale)/2,oy=8;ctx.fillStyle='#adbe87';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#263b29';for(const cell of seen){const [x,y]=cell.split(',').map(Number);ctx.fillRect(ox+x*scale,oy+y*scale,Math.max(1,scale),Math.max(1,scale))}ctx.strokeStyle='#233522';for(const w of crackedWalls)if(w.discovered)ctx.strokeRect(ox+w.x/T*scale-2,oy+w.y/T*scale-2,6,6);const px=ox+player.x/T*scale,py=oy+player.y/T*scale;ctx.fillStyle='#000';ctx.fillRect(px-5,py-1,11,3);ctx.fillRect(px-1,py-5,3,11)}
-function loop(now){const dt=Math.min(.05,last?(now-last)/1000:0);last=now;if(mode==='playing'){if(hitStop>0)hitStop=Math.max(0,hitStop-dt);else update(dt);}if(player&&ratImage)render();requestAnimationFrame(loop)}
+function loop(now){const dt=Math.min(.05,last?(now-last)/1000:0);last=now;if(mode==='playing'){if(hitStop>0)hitStop=Math.max(0,hitStop-dt);else update(dt);}syncMusic();syncChargeSound();if(player&&ratImage)render();requestAnimationFrame(loop)}
 try{[drawHero,ratImage]=await Promise.all([loadHero(),(async()=>{const im=new Image();im.src=new URL('../assets/sprites/rats.png',import.meta.url).href;await im.decode();return im})()]);for(let row=0;row<2;row++)for(let col=0;col<4;col++){const cw=Math.floor(ratImage.width/4),ch=Math.floor(ratImage.height/2),c=document.createElement('canvas');c.width=cw;c.height=ch;const ctx=c.getContext('2d');ctx.drawImage(ratImage,col*cw,row*ch,cw,ch,0,0,cw,ch);const data=ctx.getImageData(0,0,cw,ch).data;let l=cw,t=ch,r=0,b=0;for(let y=0;y<ch;y++)for(let x=0;x<cw;x++)if(data[(y*cw+x)*4+3]>100){l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,y);b=Math.max(b,y)}enemyFrames.push({x:col*cw+l,y:row*ch+t,w:Math.max(1,r-l+1),h:Math.max(1,b-t+1)})}faunaImage=new Image();faunaImage.src=new URL('../assets/sprites/fauna.png',import.meta.url).href;await faunaImage.decode();for(let row=0;row<2;row++)for(let col=0;col<2;col++){const w=faunaImage.width/2,h=faunaImage.height/2,c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(faunaImage,col*w,row*h,w,h,0,0,w,h);const d=ctx.getImageData(0,0,w,h).data;let left=w,top=h,right=0,bottom=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>100){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y)}faunaFrames.push({x:col*w+left,y:row*h+top,w:right-left+1,h:bottom-top+1})}reset();mode='intro';loadCheckpointMenu();$('#start').disabled=false;$('#start').textContent='開始新冒險';requestAnimationFrame(loop)}catch(e){$('#description').textContent='素材載入失敗，請重新整理或確認本機伺服器。';console.error(e)}
 // Read-only snapshot for playthrough checks; game state is never exposed for mutation.
 window.levelSnapshot=(includeMap=false)=>({mode,levelVersion:world.version,seed:world.seed,exploration:structuredClone(exploration),camera:{...camera},boss:{...boss},slashStyle,magic:JSON.parse(JSON.stringify(magic)),fauna:JSON.parse(JSON.stringify(fauna)),player:{...player},lights:lights.map(l=>({...l})),rats:rats.map(r=>({...r})),rewards:rewards.map(r=>({...r})),torches:torches.map(t=>({...t})),crackedWalls:crackedWalls.map(w=>({...w})),checkpoint:{...checkpoint},kills,time,map:includeMap?map.map(r=>r.slice()):undefined,exit:{...world.exit},safes:world.safes.map(s=>({...s})),traps:world.traps.map(t=>({...t,...spikeState(time)})),deaths});
