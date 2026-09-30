@@ -11,9 +11,12 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
  await page.locator('#start:not([disabled])').waitFor();assert.equal(await page.evaluate(()=>musicPlayers.length),0);
  await page.click('#music');
  async function playing(track){await page.waitForFunction(track=>musicPlayers[0]?.src.endsWith('/'+track+'.mp3')&&musicPlayers[0].readyState>=3&&!musicPlayers[0].paused&&musicPlayers[0].currentTime>0,track,{polling:100})}
+ // AudioParam updates may become observable on the next audio render quantum in CI.
+ async function gainAt(value){await page.waitForFunction(value=>musicGains[0]?.gain.value===Math.fround(value),value)}
  await playing('title');assert.equal(await page.evaluate(()=>musicGains[0].gain.value),Math.fround(.2));
  for(const level of [100,75,50,20,10,0]){
   await page.selectOption('#music-volume',String(level));
+  await gainAt(level/100);
   assert.equal(await page.evaluate(()=>musicGains[0].gain.value),Math.fround(level/100));
   assert.equal(await page.evaluate(()=>musicPlayers[0].paused),level===0);
  }
@@ -34,7 +37,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
  for(const [width,height] of [[390,844],[844,390]]){
   await page.setViewportSize({width,height});await page.goto((process.env.BASE_URL||'http://127.0.0.1:8768/')+'?handheld=1');
   await page.locator('#start:not([disabled])').waitFor();await page.locator('#music').click();await playing('title');
-  await page.locator('#music-volume').selectOption('50');assert.equal(await page.evaluate(()=>musicGains[0].gain.value),.5);
+  await page.locator('#music-volume').selectOption('50');await gainAt(.5);assert.equal(await page.evaluate(()=>musicGains[0].gain.value),.5);
   await page.click('#start');await page.click('#handheld-start');await page.locator('#music').click();
   assert.ok(await page.evaluate(()=>bgmTest.music.snapshot().muted));
  }
