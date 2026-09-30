@@ -12,10 +12,12 @@ export function musicScene(mode, boss) {
 }
 export function createMusic({makeAudio = () => new Audio(), makeContext = () => new (globalThis.AudioContext || globalThis.webkitAudioContext)(), onChange = () => {}} = {}) {
   let audio, ctx, gain, scene = 'title', current = null, unlocked = false;
-  let volume = MUSIC_VOLUME, lastAudibleVolume = MUSIC_VOLUME;
+  let volume = MUSIC_VOLUME, lastAudibleVolume = MUSIC_VOLUME, duck = 1, duckTimer = null;
   let muted = false, paused = false, error = false, attempt = 0, playing = false, initialized = false;
-  const snapshot = () => ({scene, current, unlocked, muted, paused, error, volume});
+  const snapshot = () => ({scene, current, unlocked, muted, paused, error, volume, effectiveVolume: muted ? 0 : volume * duck});
   const notify = () => onChange(snapshot());
+  function applyGain() { try { if (gain) gain.gain.value = muted ? 0 : volume * duck; } catch { /* Optional audio. */ } }
+  function clearDuck() { clearTimeout(duckTimer);duckTimer = null;duck = 1;applyGain(); }
   function sync() {
     if (!audio || !unlocked) return;
     if (paused || muted) {
@@ -41,7 +43,7 @@ export function createMusic({makeAudio = () => new Audio(), makeContext = () => 
       try {
         if (!initialized) {
           audio = makeAudio(); audio.preload = 'none'; audio.loop = true; audio.volume = 0;
-          ctx = makeContext(); gain = ctx.createGain(); gain.gain.value = muted ? 0 : volume;
+          ctx = makeContext(); gain = ctx.createGain(); applyGain();
           ctx.createMediaElementSource(audio).connect(gain).connect(ctx.destination);
           audio.volume = 1;
           initialized = true;
@@ -62,14 +64,20 @@ export function createMusic({makeAudio = () => new Audio(), makeContext = () => 
       if (!MUSIC_LEVELS.includes(value)) throw new RangeError('Unsupported music volume');
       volume = value; muted = value === 0;
       if (value > 0) lastAudibleVolume = value;
-      if (gain) gain.gain.value = value;
+      applyGain();
       sync(); notify();
     },
     setMuted(value) {
       muted = Boolean(value);
       if (!muted && volume === 0) volume = lastAudibleVolume;
-      if (gain) gain.gain.value = muted ? 0 : volume;
+      applyGain();
       sync(); notify();
     },
+    // Temporary mix attenuation: never change the user's setting or unlock audio.
+    duck(duration = 1500) {
+      clearTimeout(duckTimer);duck = .5;applyGain();
+      duckTimer = setTimeout(clearDuck, duration);
+    },
+    clearDuck,
   };
 }

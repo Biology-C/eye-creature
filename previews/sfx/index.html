@@ -32,11 +32,22 @@ const items=[
  ['pickup','拾取','1.2 秒內連續拾取會逐步升調','6'],
  ['dash','衝刺','短促氣流','7'],
  ['charge','蓄力（按住）','0.8 秒升到滿，滿時響提示音；放開即停','8'],
+ ['hit','命中','短促撞擊與黏液感',''],
+ ['hurt','受傷','下降警示音，無人聲',''],
+ ['defeat','擊敗','氣泡消散與下降音',''],
+ ['bossWarn','紅熊預告','兩段低音上升脈衝',''],
+ ['orb','引路光點','明亮的長琶音',''],
+ ['mirror','鏡面生效','玻璃清響與閃爍尾音',''],
+ ['curse','認知顛倒','下沉扭曲的變身聲',''],
+ ['bossSummon','紅熊召喚','低音隆起與小調琶音',''],
+ ['bossDefeat','紅熊倒下','沉重倒下與開門鐘聲',''],
+ ['death','玩家死亡','柔和下降，不驚嚇',''],
+ ['levelClear','通關','明亮的完成旋律',''],
 ];
 const grid=document.getElementById('grid');
 for(const [name,title,desc,key] of items){
  const card=document.createElement('section');card.className='card';
- card.innerHTML=`<h2>${title} <kbd>${key}</kbd></h2><small>${desc}</small><div class="row"></div>`;
+ card.innerHTML=`<h2>${title} ${key?`<kbd>${key}</kbd>`:''}</h2><small>${desc}</small><div class="row"></div>`;
  const row=card.querySelector('.row'),play=document.createElement('button');play.className='primary';
  if(name==='charge'){
   play.textContent='按住蓄力';
@@ -51,7 +62,7 @@ for(const [name,title,desc,key] of items){
  row.append(dl);grid.append(card);
 }
 document.getElementById('vol').oninput=e=>sfx.volume=+e.target.value;
-const keyMap=Object.fromEntries(items.map(i=>[i[3],i[0]]));
+const keyMap=Object.fromEntries(items.filter(i=>i[3]).map(i=>[i[3],i[0]]));
 addEventListener('keydown',e=>{const n=keyMap[e.key];if(!n||e.repeat)return;n==='charge'?sfx.startCharge():sfx.play(n)});
 addEventListener('keyup',e=>{if(e.key==='8')sfx.stopCharge()});
 addEventListener('blur',()=>sfx.stopCharge());

@@ -8,16 +8,16 @@ const base=process.env.BASE_URL||'http://127.0.0.1:8768/';
     // Every procedural sound renders offline, audible, finite and without clipping.
     await p.goto(base+'previews/sfx/');
     const stats=await p.evaluate(()=>sfxStats());
-    for(const name of ['slash1','slash2','slash3','shot','chargedShot','pickup','dash','charge']){
+    for(const name of ['slash1','slash2','slash3','shot','chargedShot','pickup','dash','charge','hit','hurt','defeat','bossWarn','orb','mirror','curse','bossSummon','bossDefeat','death','levelClear']){
       const s=stats[name];assert.ok(s,name);assert.equal(s.bad,0,name);
-      assert.ok(s.peak>0.05&&s.peak<0.98,`${name} peak ${s.peak}`);assert.ok(s.seconds<=1.3,name);
+      assert.ok(s.peak>0.05&&s.peak<0.98,`${name} peak ${s.peak}`);assert.ok(s.seconds<=1.5,name);
     }
     // The heavy third slash carries more energy than the light first slash.
     assert.ok(stats.slash3.rms>stats.slash1.rms);
     // Real preview playback and downloadable PCM, not just offline signal statistics.
     await p.locator('.primary').first().click();
-    for(let i=0;i<8;i++){
-      const wait=p.waitForEvent('download');await p.getByText('下載 WAV',{exact:true}).nth(i).click();const download=await wait;
+    for(let i=0;i<19;i++){
+      await p.waitForTimeout(1100);const wait=p.waitForEvent('download');await p.getByText('下載 WAV',{exact:true}).nth(i).click();const download=await wait;
       const bytes=fs.readFileSync(await download.path());assert.equal(bytes.toString('ascii',0,4),'RIFF');assert.equal(bytes.toString('ascii',8,12),'WAVE');assert.equal(bytes.readUInt32LE(24),44100);assert.ok(bytes.length>44);
     }
     await p.addInitScript(()=>{window.requestAnimationFrame=()=>1;window.recordedStarts=0;const originalStart=AudioBufferSourceNode.prototype.start;AudioBufferSourceNode.prototype.start=function(...args){if(this.buffer?.duration===5)window.recordedStarts++;return originalStart.apply(this,args)};window.liveAudioCount=0;const Native=window.AudioContext;window.AudioContext=class extends Native{constructor(...args){super(...args);window.liveAudioCount++}}});

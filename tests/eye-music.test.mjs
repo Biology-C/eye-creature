@@ -29,3 +29,10 @@ music.setMuted(false);assert.equal(gain.gain.value,.1,'restore previous audible 
 music.setState('boss');assert.equal(gain.gain.value,.1,'scene change preserves volume');
 assert.throws(()=>music.setVolume(2),RangeError);
 console.log('Music gain, switching, pause, mute, recovery and no autoplay: passed');
+music.setVolume(.2);music.duck(30);assert.equal(gain.gain.value,.1);assert.equal(music.snapshot().volume,.2);
+music.setVolume(.5);assert.equal(gain.gain.value,.25,'volume changes retain temporary attenuation');
+music.setMuted(true);assert.equal(gain.gain.value,0);music.setMuted(false);assert.equal(gain.gain.value,.25);
+await new Promise(r=>setTimeout(r,45));assert.equal(gain.gain.value,.5,'restore current user volume, not stale value');
+music.duck(30);music.setVolume(0);await new Promise(r=>setTimeout(r,45));assert.equal(gain.gain.value,0,'recovery never unmutes');
+music.setVolume(.2);music.duck();music.clearDuck();assert.equal(gain.gain.value,.2);
+console.log('PASS temporary BGM half gain, live volume/mute, timed recovery and new-run cleanup');

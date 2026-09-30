@@ -45,7 +45,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
   h.prepare();h.pressAttack(true);h.tick(50);h.releaseAttack();const charged=h.magic.shots.map(s=>[s.charged,s.damage]);
   h.prepare();let w=h.walls[0];Object.assign(h.p,{x:w.x+w.w+25,y:w.y+48,face:-1,energy:30});h.pressAttack(true);h.tick(40);h.releaseAttack();const left=[w.broken,h.p.energy];
   h.prepare();w=h.walls[0];Object.assign(h.p,{x:w.x-25,y:w.y+48,face:1,energy:30});h.pressAttack(true);h.tick(10);Object.assign(h.rats[0],{hp:1,x:h.p.x+12,y:h.p.y});h.tick(35);h.releaseAttack();const interrupted=[w.broken,h.p.energy];
-  h.prepare();h.boss.active=true;h.boss.cursed=true;Object.assign(h.p,h.world.arena.mirror);h.tick(1);return {charged,left,interrupted,curse:h.boss.cursed};
+  h.prepare();h.boss.active=true;h.boss.cursed=true;h.boss.mirrors=[{id:'test',x:h.world.arena.left+104,y:h.world.arena.floor-16,vy:0,landed:true}];Object.assign(h.p,{x:h.boss.mirrors[0].x,y:h.world.arena.floor-11.01});h.tick(1);return {charged,left,interrupted,curse:h.boss.cursed};
  });assert.deepEqual(more,{charged:[[true,1.5]],left:[true,0],interrupted:[false,30],curse:false});
  assert.deepEqual(errors,[]);console.log('PASS phone portrait/landscape, multi-touch, cancellation, A breach and charge selection, map and scene mirrors');
 }finally{await b.close()}})().catch(e=>{console.error(e);process.exitCode=1});

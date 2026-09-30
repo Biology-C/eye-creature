@@ -140,10 +140,100 @@ export const SOUNDS = {
     tone(ctx, out, t + 0.06, { type: 'triangle', from: 1976, dur: 0.14, gain: 0.1 });
     tone(ctx, out, t + 0.06, { type: 'square', from: 1976, dur: 0.08, gain: 0.025, lowpass: 5000 });
   },
+  /** Melee / shot lands on an enemy: short thump + squish. opts.big for the boss. */
+  hit(ctx, out, t, { big = false } = {}) {
+    const v = vary(0.06), k = big ? 0.7 : 1;
+    tone(ctx, out, t, { type: 'triangle', from: 240 * v * k, to: 90 * k, dur: 0.09, gain: 0.6, attack: 0.002 });
+    whoosh(ctx, out, t, { from: 1400 * v, peak: 1800 * v, to: 700, dur: 0.06, q: 1.1, gain: 0.7, attack: 0.002, hold: 2, swell: 0.05 });
+    tone(ctx, out, t, { type: 'square', from: 950 * v, to: 600, dur: 0.025, gain: 0.09, lowpass: 4000, attack: 0.001 });
+  },
+  /** Player takes damage: beating square drop + crack. Clear warning, no voice. */
+  hurt(ctx, out, t) {
+    tone(ctx, out, t, { type: 'square', from: 540, to: 250, dur: 0.2, gain: 0.17, lowpass: 2600, attack: 0.002 });
+    tone(ctx, out, t, { type: 'square', from: 505, to: 234, dur: 0.2, gain: 0.14, lowpass: 2600, attack: 0.002 });
+    tone(ctx, out, t, { type: 'triangle', from: 150, to: 60, dur: 0.14, gain: 0.4, attack: 0.002 });
+    whoosh(ctx, out, t, { from: 2600, peak: 3200, to: 1500, dur: 0.07, q: 1.4, gain: 0.3, attack: 0.002, swell: 0.05 });
+  },
+  /** Enemy defeated; rat to slime uses a rising bloop. */
+  defeat(ctx, out, t, { kind } = {}) {
+    const v = vary();
+    if (kind === 'transform') {
+      tone(ctx, out, t, { type: 'triangle', from: 300 * v, to: 720 * v, dur: 0.12, gain: 0.22 });
+      tone(ctx, out, t + 0.05, { type: 'square', from: 660 * v, to: 880 * v, dur: 0.07, gain: 0.05, lowpass: 3000 });
+      return;
+    }
+    whoosh(ctx, out, t, { from: 1600, peak: 1900, to: 450, dur: 0.2, q: 0.8, gain: 0.26, attack: 0.004, peakAt: 0.15, hold: 2, swell: 0.1 });
+    [0, -5, -12].forEach((semi, i) => tone(ctx, out, t + 0.02 + i * 0.045, { type: 'square', from: 880 * v * 2 ** (semi / 12), dur: 0.06, gain: 0.06, lowpass: 4000 }));
+  },
+  /** Boss attack warning: two low beating pulses rising in pitch. */
+  bossWarn(ctx, out, t) {
+    for (const [at, f] of [[0, 110], [0.28, 147]]) {
+      tone(ctx, out, t + at, { type: 'square', from: f, to: f * 1.5, dur: 0.24, gain: 0.06, lowpass: 1400, attack: 0.01 });
+      tone(ctx, out, t + at, { type: 'square', from: f * 1.06, to: f * 1.59, dur: 0.24, gain: 0.05, lowpass: 1400, attack: 0.01 });
+      tone(ctx, out, t + at, { type: 'triangle', from: f / 2, dur: 0.22, gain: 0.15, attack: 0.01 });
+    }
+  },
+  /** Guiding light orb collected: brighter, longer arpeggio than a pickup. */
+  orb(ctx, out, t) {
+    [0, 4, 7, 12, 16].forEach((semi, i) => {
+      const f = 784 * 2 ** (semi / 12), last = i === 4;
+      tone(ctx, out, t + i * 0.06, { type: 'triangle', from: f, dur: last ? 0.35 : 0.1, gain: 0.13 });
+      tone(ctx, out, t + i * 0.06, { type: 'square', from: f, dur: last ? 0.2 : 0.07, gain: 0.035, lowpass: 5000 });
+    });
+    whoosh(ctx, out, t + 0.2, { from: 5000, peak: 6500, to: 5500, dur: 0.35, q: 2, gain: 0.05, attack: 0.02, swell: 0.3 });
+  },
+  /** Mirror skill / scene mirror triggers: crisp glass ping with a shimmering tail. */
+  mirror(ctx, out, t) {
+    tone(ctx, out, t, { type: 'triangle', from: 2093, dur: 0.45, gain: 0.14, attack: 0.002 });
+    tone(ctx, out, t, { type: 'triangle', from: 3136, dur: 0.3, gain: 0.06, attack: 0.002 });
+    tone(ctx, out, t + 0.05, { type: 'triangle', from: 2637, dur: 0.55, gain: 0.07, attack: 0.02 });
+    tone(ctx, out, t + 0.05, { type: 'triangle', from: 2651, dur: 0.55, gain: 0.07, attack: 0.02 });
+    whoosh(ctx, out, t, { from: 6500, peak: 7500, to: 6000, dur: 0.14, q: 5, gain: 0.12, attack: 0.002, swell: 0.05 });
+  },
+  /** Red bear's cognition curse: warped, sinking wobble as the player turns into a slime. */
+  curse(ctx, out, t) {
+    whoosh(ctx, out, t, { from: 300, peak: 1600, to: 900, dur: 0.45, q: 1.2, gain: 0.22, attack: 0.02, peakAt: 0.8, swell: 0.85, hold: 2 });
+    tone(ctx, out, t + 0.1, { type: 'triangle', from: 660, to: 200, dur: 0.5, gain: 0.2, attack: 0.02 });
+    tone(ctx, out, t + 0.1, { type: 'square', from: 700, to: 175, dur: 0.5, gain: 0.05, lowpass: 1800, attack: 0.02 });
+    tone(ctx, out, t + 0.1, { type: 'square', from: 740, to: 190, dur: 0.5, gain: 0.04, lowpass: 1800, attack: 0.02 });
+  },
+  /** Red bear summons reinforcements: ominous rising rumble and a low minor arpeggio. */
+  bossSummon(ctx, out, t) {
+    whoosh(ctx, out, t, { from: 180, peak: 1100, to: 800, dur: 0.6, q: 0.9, gain: 0.26, attack: 0.03, peakAt: 0.8, swell: 0.8, hold: 3 });
+    [0, 3, 7].forEach((semi, i) => {
+      const f = 196 * 2 ** (semi / 12);
+      tone(ctx, out, t + 0.15 + i * 0.12, { type: 'square', from: f, dur: 0.14, gain: 0.07, lowpass: 1600 });
+      tone(ctx, out, t + 0.15 + i * 0.12, { type: 'triangle', from: f / 2, dur: 0.16, gain: 0.16 });
+    });
+  },
+  /** Red bear defeated: heavy collapse, then a three-note chime as the gate opens. */
+  bossDefeat(ctx, out, t) {
+    whoosh(ctx, out, t, { from: 1200, peak: 1400, to: 180, dur: 0.9, q: 0.7, gain: 0.32, attack: 0.004, peakAt: 0.08, swell: 0.05, hold: 3 });
+    tone(ctx, out, t, { type: 'triangle', from: 200, to: 45, dur: 0.8, gain: 0.35, attack: 0.004 });
+    [0, 4, 7].forEach((semi, i) => tone(ctx, out, t + 0.6 + i * 0.12, { type: 'triangle', from: 523 * 2 ** (semi / 12), dur: i === 2 ? 0.5 : 0.14, gain: 0.14 }));
+  },
+  /** Player defeated: gentle falling phrase, not frightening. */
+  death(ctx, out, t) {
+    whoosh(ctx, out, t, { from: 900, peak: 1100, to: 300, dur: 0.3, q: 0.8, gain: 0.18, attack: 0.004, peakAt: 0.1, swell: 0.05, hold: 2 });
+    [0, -3, -7, -12].forEach((semi, i) => {
+      const f = 523 * 2 ** (semi / 12), last = i === 3;
+      tone(ctx, out, t + 0.08 + i * 0.13, { type: 'triangle', from: f, to: last ? f * 0.94 : f, dur: last ? 0.4 : 0.14, gain: 0.16 });
+      tone(ctx, out, t + 0.08 + i * 0.13, { type: 'square', from: f, dur: 0.08, gain: 0.03, lowpass: 3000 });
+    });
+  },
+  /** Level clear jingle (~1.2 s). */
+  levelClear(ctx, out, t) {
+    const notes = [[0.01, 523, 0.12], [0.12, 659, 0.12], [0.24, 784, 0.12], [0.36, 1047, 0.2], [0.6, 784, 0.12], [0.72, 1047, 0.5]];
+    for (const [at, f, dur] of notes) {
+      tone(ctx, out, t + at, { type: 'square', from: f, dur, gain: 0.06, lowpass: 4500 });
+      tone(ctx, out, t + at, { type: 'triangle', from: f, dur: dur + 0.05, gain: 0.12 });
+      tone(ctx, out, t + at, { type: 'triangle', from: f / 4, dur: dur, gain: 0.12 });
+    }
+  },
 };
 
 /** Render length (seconds) for offline export / tests. */
-export const SOUND_LENGTH = { slash1: 0.25, slash2: 0.3, slash3: 0.4, shot: 0.2, chargedShot: 0.4, pickup: 0.3, dash: 0.2, chargeReady: 0.25, charge: 1.3 };
+export const SOUND_LENGTH = { slash1: 0.25, slash2: 0.3, slash3: 0.4, shot: 0.2, chargedShot: 0.4, pickup: 0.3, dash: 0.2, chargeReady: 0.25, charge: 1.3, hit: 0.15, hurt: 0.3, defeat: 0.3, bossWarn: 0.7, orb: 0.7, mirror: 0.7, curse: 0.7, bossSummon: 0.8, bossDefeat: 1.4, death: 0.8, levelClear: 1.4 };
 export const SOUND_NAMES = Object.keys(SOUND_LENGTH);
 
 // ---------------------------------------------------------------- charge loop

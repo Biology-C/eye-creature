@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {createCombatSounds} from '../src/combat-sounds.mjs';
+let now=0;const calls=[],s=createCombatSounds({play:(name,opts)=>calls.push({name,...opts})},()=>now);
+s.damaged({hp:2},3);s.damaged({hp:29},30,{boss:true});s.flush();
+assert.deepEqual(calls,[{name:'hit',big:true}]);
+now=39;s.damaged({hp:1},2);s.flush();assert.equal(calls.length,1);
+now=40;s.damaged({hp:1},2);s.flush();assert.equal(calls.length,2);
+s.flush();assert.equal(calls.length,2,'no replay next frame');
+calls.length=0;s.damaged({hp:.5},2,{crystalRat:true});s.damaged({hp:0},.5,{crystalRat:true});s.damaged({hp:0},0,{crystalRat:true});
+assert.deepEqual(calls,[{name:'defeat',kind:'transform'},{name:'defeat'}]);
+calls.length=0;s.damaged({hp:0},3);assert.deepEqual(calls,[{name:'defeat'}]);
+calls.length=0;s.damaged({hp:1},1);s.damaged({hp:2},1);s.clear();now=100;s.flush();assert.equal(calls.length,0);
+console.log('PASS sound-only damage observer: same-frame grouping, boss priority, 40ms interval, transform and defeat transitions');
+calls.length=0;s.damaged({hp:2},3);s.damaged({hp:0},1,{boss:true});s.damaged({hp:1},2);now+=100;s.flush();
+assert.deepEqual(calls,[{name:'bossDefeat'}],'boss defeat supersedes pending hit and ordinary defeat');

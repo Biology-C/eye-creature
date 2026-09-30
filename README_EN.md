@@ -12,9 +12,13 @@ Extracted from the Mouse Maze experimental prototype. This repository now owns E
 
 The `feature/first-adventure-rework` branch adds an authored spine with six seeded branches, gaze clues, three wind ducts, combo-cleared obstacles, three memories, desktop HUD/camera improvements and browser-local checkpoint saves. Published separately at `/preview/`; the root URL keeps the original `main` game. See [deployment notes](docs/PUBLISHING.md). The preview now includes a dedicated touch-device handheld shell while preserving desktop controls. See the [validation record](docs/design/adventure-validation.md).
 
+## Exploration boss and audio update
+
+The exploration branch now includes the main-branch bear encounter: ranged bolts, stomp shockwaves, 75/50/20% reinforcement waves, real slime transformation, falling mirrors, closed-gate escape and grounded-charge fixes. Two batches add eleven synthesized sounds with event deduplication and temporary half-volume BGM during the clear jingle. Exploration progression and checkpoints are retained. This update ships with the exploration branch at `/preview/`. See [integration notes](docs/design/exploration-bear-integration.md).
+
 ## Phone controls
 
-Touch devices use a green-and-gray pixel handheld shell; the game remains full color. D-pad moves/looks, B flaps/glides, A attacks or charges magic, X dashes. Near an eligible wall with 30 energy, hold A for 0.65s to breach; turning away, leaving range, damage or a melee target cancels it. Phone mirrors are environmental props, including the existing boss-room mirror. SELECT opens the explored map; START pauses. Desktop Space/E/Q/Shift are unchanged.
+Touch devices use a green-and-gray pixel handheld shell; the game remains full color. D-pad moves/looks, B flaps/glides, A attacks or charges magic, X dashes. Near an eligible wall with 30 energy, hold A for 0.65s to breach; turning away, leaving range, damage or a melee target cancels it. Phone mirrors are environmental props, while the bear curse requires collecting a mirror dropped by its stomp. SELECT opens the explored map; START pauses. Desktop Space/E/Q/Shift are unchanged.
 
 Portrait, landscape and multi-touch browser emulation pass; physical iOS/Android testing remains pending. See [phone validation](docs/design/handheld.md).
 
