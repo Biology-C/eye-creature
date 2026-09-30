@@ -1,0 +1,17 @@
+#message-layer[hidden]{display:none}
+#message-layer{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:#08121aa8;pointer-events:none}
+#message-card{box-sizing:border-box;pointer-events:auto;width:66vw;max-height:86dvh;overflow:auto;overflow-wrap:anywhere;padding:28px;border:3px solid #a8c6cf;background:#192e39;color:#eff8f5;box-shadow:0 8px 32px #0009;display:grid;grid-template-columns:100px minmax(0,1fr);gap:12px 24px;text-align:left;cursor:pointer;outline-offset:4px}
+#message-card canvas{width:100%;max-width:120px;height:auto;image-rendering:pixelated}
+#message-card h2{font-size:24px;line-height:1.35;margin:0 0 16px;color:inherit}
+#message-card p{font-size:18px;line-height:1.65;margin:8px 0;color:inherit;max-width:none}
+#message-card #message-controls{color:#b8e6ff}
+#message-card #message-close{grid-column:1/-1;border-top:1px solid #73959b;padding-top:12px;margin:0;color:#d2e2cf}
+body.light #message-card{background:#f4f7ec;color:#182a34;border-color:#415d62;box-shadow:0 8px 32px #24343b55}
+body.light #message-card #message-controls,body.light #message-card #message-close{color:#244d5b}
+.handheld #message-card{width:66vw;padding:clamp(12px,2.5vw,24px);grid-template-columns:1fr;gap:8px;border:4px solid #202a27;background:#cad7a5;color:#202a27;font-family:ui-monospace,monospace}
+.handheld #message-card canvas{width:64px;justify-self:center}
+.handheld #message-card h2{font-size:clamp(24px,3.2vw,30px);margin-bottom:8px}
+.handheld #message-card p{font-size:clamp(16px,2.2vw,20px);line-height:1.5}
+.handheld #message-card #message-controls,.handheld #message-card #message-close{color:#273d2e}
+@media(max-height:500px){.handheld #message-card{grid-template-columns:64px minmax(0,1fr);max-height:90dvh;padding:12px;gap:8px 14px}.handheld #message-card canvas{width:64px}.handheld #message-card h2{font-size:24px}.handheld #message-card p{font-size:16px}}
+/* Deliberately no entrance animation, including reduced-motion mode. */

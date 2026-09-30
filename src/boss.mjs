@@ -1,4 +1,5 @@
 import {MAX_HP} from './health.mjs';
+import {dropRecovery,collectRecovery,drawRecovery} from './boss-recovery.mjs';
 export const BOSS_WAVES=[{ratio:.75,kinds:['rat','rat']},{ratio:.5,kinds:['slime','slime','slime']},{ratio:.2,kinds:['big']}];
 export function addBossArena(world){
  const top=world.H+2,T=world.T;
@@ -8,7 +9,7 @@ export function addBossArena(world){
  world.arena={left:64,right:768,top:top*T,floor:(top+9)*T,start:{x:144,y:(top+9)*T-12},exit:{x:720,y:(top+9)*T-12}};
  for(const x of [240,432,624])world.platforms.push({x,y:(top+6)*T,w:96});
 }
-function resetEncounter(b){Object.assign(b,{state:'rest',timer:1.5,cycle:0,cursed:false,stun:0,attack:null,waves:[],shots:[],mirrors:[],effects:[],serial:0})}
+function resetEncounter(b){Object.assign(b,{state:'rest',timer:1.5,cycle:0,cursed:false,stun:0,attack:null,waves:[],shots:[],mirrors:[],effects:[],serial:0,recovery:null,lastRecoveryAt:-Infinity})}
 export function createBoss(world){const a=world.arena,b={x:576,y:a.floor-38,hp:30,maxHp:30,radiusX:34,radiusY:38,active:false,face:-1,arena:a};resetEncounter(b);return b}
 export function enterBoss(b,p,a){resetEncounter(b);b.active=true;b.x=576;b.y=a.floor-38;Object.assign(p,{x:a.start.x,y:a.start.y,vy:0,wing:.7,hp:MAX_HP,dashRemaining:0})}
 export function resetBoss(b){b.active=false;resetEncounter(b);if(b.hp>0)b.hp=b.maxHp}
@@ -31,15 +32,19 @@ function beginStrike(b,p,time,events){
  if(b.attack==='stomp'){
   b.effects.push({x:b.x,y:b.arena.floor,until:time+.45,kind:'stomp'});
   if(Math.abs(p.x-b.x)<126&&p.y>b.arena.floor-46&&events.clear(b.x,b.y,p.x,p.y))events.hurt('紅熊重踏');
+  if(!b.active||b.hp<=0)return; // A lethal stomp may have reset the encounter.
   for(const dir of [-1,1])b.shots.push({x:b.x+dir*40,y:b.arena.floor-10,vx:dir*190,vy:0,life:2.6,radius:10,kind:'wave'});
   if(b.cursed&&!b.mirrors.length){
-   const x=b.x>(b.arena.left+b.arena.right)/2?b.arena.left+104:b.arena.right-104;
+   // Keep mirrors at the far safe edge, on the arena side of the closed gate.
+   // This leaves a separate reachable 120px-spaced recovery spot at every bear position.
+   const x=b.x>(b.arena.left+b.arena.right)/2?b.arena.left+12:b.arena.exit.x-18-12;
    b.mirrors.push({id:`mirror-${++b.serial}`,x,y:b.arena.top+36,vy:0,landed:false});events.mirrorDrop?.();
   }
+  if(dropRecovery(b,p,time))events.recoveryDrop?.();
  }
 }
 export function updateBoss(b,p,dt,time,events){
- if(!b.active||b.hp<=0){b.cursed=false;b.shots=[];b.mirrors=[];b.effects=[];return}
+ if(!b.active||b.hp<=0){b.cursed=false;b.shots=[];b.mirrors=[];b.effects=[];b.recovery=null;return}
  for(let i=0;i<BOSS_WAVES.length;i++)if(b.hp<=b.maxHp*BOSS_WAVES[i].ratio&&!b.waves.includes(i)){b.waves.push(i);events.summon?.(BOSS_WAVES[i].kinds,i)}
  // Fixed substeps retain collision and timing at 30/60/120 FPS.
  const n=Math.max(1,Math.ceil(dt*120)),step=dt/n;
@@ -60,9 +65,10 @@ export function updateBoss(b,p,dt,time,events){
   });
   for(const m of b.mirrors){m.vy=Math.min(320,m.vy+620*step);m.y=Math.min(b.arena.floor-16,m.y+m.vy*step);m.landed=m.y>=b.arena.floor-16;}
  }
- if(!b.active||b.hp<=0){b.shots=[];b.mirrors=[];b.effects=[];return}
+ if(!b.active||b.hp<=0){b.shots=[];b.mirrors=[];b.effects=[];b.recovery=null;return}
  b.effects=b.effects.filter(e=>e.until>time);
  if(b.cursed&&b.mirrors.some(m=>m.landed&&Math.hypot(m.x-p.x,m.y-p.y)<34)&&clearBossCurse(b))events.cured?.();
+ if(collectRecovery(b,p))events.recovered?.();
 }
 export const BOSS_ATTACK_LABELS={claw:'揮爪',bolt:'吐息：離開瞄準線',curse:'認知顛倒',stomp:'重踏：跳離地面'};
 export function drawBear(g,b,time,reduced){
@@ -103,6 +109,7 @@ export function drawBossTelegraph(g,b){
 }
 export function drawBossEffects(g,b,time,reduced){
  g.save();
+ drawRecovery(g,b,time,reduced);
  for(const s of b.shots){g.fillStyle=s.kind==='wave'?'#d97678':'#9b4770';g.beginPath();g.ellipse(s.x,s.y,s.radius+5,s.radius,0,0,Math.PI*2);g.fill();g.fillStyle='#ffe0ae';g.beginPath();g.arc(s.x,s.y,s.radius*.55,0,Math.PI*2);g.fill()}
  for(const e of b.effects){const alpha=Math.max(0,Math.min(1,(e.until-time)/.45));g.globalAlpha=alpha;g.strokeStyle='#efba9c';g.lineWidth=3;g.beginPath();g.ellipse(e.x,e.y-2,reduced?85:35+(1-alpha)*110,12,0,0,Math.PI*2);g.stroke()}g.globalAlpha=1;
  for(const m of b.mirrors){g.fillStyle='#4a3e54';g.fillRect(m.x-12,m.y-18,24,34);g.fillStyle='#88b7be';g.fillRect(m.x-9,m.y-15,18,28);g.fillStyle='#e1fff1';g.fillRect(m.x-6,m.y-12,5,20);g.fillRect(m.x+2,m.y-6,4,12);if(!m.landed){g.strokeStyle='#b3dbe0';g.beginPath();g.moveTo(m.x,m.y-40);g.lineTo(m.x,m.y-24);g.stroke()}}
