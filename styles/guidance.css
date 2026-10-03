@@ -1,0 +1,17 @@
+/* One readable message surface, inside the color game screen. */
+.viewport #notice,.handheld .viewport #notice,body.light .viewport #notice{position:absolute;z-index:2;top:7%;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 28px);margin:0;padding:10px 16px;min-height:0;border:1px solid #9caeaa;border-radius:6px;background:#101d29ed;color:#f5f5e8;font:18px/1.5 system-ui,sans-serif;text-align:center;overflow-wrap:anywhere;display:block;pointer-events:none}
+#notice strong{display:block;font-size:24px;color:#ffe0ab;margin-bottom:4px}
+#guidance-arrow{display:inline-block;font-size:30px;line-height:1;margin:4px 12px;color:#ffd391}
+.handheld .viewport #notice{font-size:16px;padding:8px 10px;max-width:calc(100% - 16px)}
+.handheld #notice strong{font-size:20px}
+.handheld main{grid-template-rows:22px 53px minmax(120px,1fr) 0px 218px}
+.handheld .touch{grid-row:5}
+#overlay #description{font-size:18px;line-height:1.55;max-width:100%}
+.handheld #overlay #description{font-size:16px}
+#description .intro-line{display:block;white-space:nowrap}
+#save-status:empty{display:none}
+#breach-key{position:absolute;z-index:1;transform:translate(-50%,-50%);padding:2px 7px;border:1px solid #ffe0ab;border-radius:4px;background:#16252ce8;color:#ffe0ab;font:16px/1.5 system-ui,sans-serif;pointer-events:none;white-space:nowrap}
+#saved-icon{position:absolute;left:12px;top:36px;z-index:1;line-height:0;padding:5px;background:#15272dd9;border:1px solid #b5dcc0;color:#c7f2c4;pointer-events:none}
+.resource-flash{color:#ffdf9c!important;text-shadow:0 0 8px #dcac6655}
+@media(orientation:landscape){.handheld main{grid-template-rows:19px 47px minmax(120px,1fr) 35px}.handheld .touch{grid-row:auto}}
+@media(max-height:500px) and (orientation:landscape){.handheld .viewport #notice{top:5%;padding:5px 8px}.handheld #overlay #description{font-size:16px}}
