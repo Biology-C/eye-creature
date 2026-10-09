@@ -37,3 +37,22 @@
 回復時依需求 revert 文件與工具提交，再 revert c1dbffb 可回到未排版狀態；
 保留 f317d90 即保留原先開場與尖刺修正。不 reset 使用者未提交內容，不 force push。
 main 未修改；沒有推送。Pages 新門檻的啟用方式與限制見 PUBLISHING.md。
+
+## 2026-10-09 後續：回放、數值集中與除錯
+
+本節是排版完成後收到的新任務。先在 ce4a9a2 的遊戲上录製三段輸入回放，
+以 2be2381 保存安全網，再將相同數值搬至 config/balance.mjs。
+新增 debug.mjs 只在 debug=1 載入；此模式不讀寫旅程存檔。
+同時加上 Git 的 LF 規則，避免 Windows 重新 checkout 後換行使格式檢查失敗。
+
+- npm run test:unit：24 個檔案通過。
+- npm test：52 個檔案通過（24 單元、28 瀏覽器）。
+- 三段 golden replay 全部一致；搬移後未重錄、未修改 golden。
+- npm run format:check 通過；npm run lint：0 error、4 個原有 warning。
+- 同一組 8 張非 debug 畫面 PNG 與 f317d90 基線完全相同。
+- 設定引用、即時數值、無敵、跳魔王、補給、FPS、無效輸入、還原與存檔隔離通過。
+- 文件索引涵蓋全部 28 份 design Markdown，模組地圖涵蓋 36 個 src 模組。
+
+這一輪有數值引用與除錯程式變更，故不再使用「全部 AST 相同」描述後續重構；
+上節的 AST 驗證僅指排版／工具階段。一般遊玩的預設數值與回放狀態仍相同。
+聲音未人工重聽，實機觸控與長時間玩家手感未再次驗收。仍只在本機提交，不推送。

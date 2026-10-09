@@ -6,7 +6,7 @@
 
 ## 入口與執行方式
 
-根目錄 index.html、style.css 提供 DOM、面板與掌機布局；src/game.js 是遊戲組裝入口。
+根目錄 index.html 與 styles/ 下的 CSS 提供 DOM、面板與掌機布局；src/game.js 是遊戲組裝入口。
 src 使用瀏覽器 ES modules，不需要打包器；npm start 透過 scripts/server.cjs 提供靜態檔案。
 assets 保存素材，previews 保存美術與音效試看頁，tests 同時包含純模組與瀏覽器測試。
 scripts/build-pages.cjs 將原版放根目錄、探索版放 preview/，共用 versions/ 選擇頁。
@@ -22,7 +22,9 @@ scripts/build-pages.cjs 將原版放根目錄、探索版放 preview/，共用 v
 | breach.mjs | 選取四方向可破牆、檢查資源及保護範圍並套用地形破壞。 |
 | combat-sounds.mjs | 將實際受傷結果轉為音效，處理命中去重與死亡音優先順序。 |
 | combat.mjs | 提供近戰範圍、身體尺寸及牆面阻隔的共用命中判定。 |
+| config/balance.mjs | 集中玩家、戰鬥、敵人、魔王、資源、陷阱與教學的可調參數及唯讀預設快照。 |
 | cues.mjs | 播放發現、破牆錄音、存檔及區域裝置提示音。 |
+| debug.mjs | 僅在 debug=1 載入的即時數值、FPS、無敵與測試快捷操作面板。 |
 | exploration-art.mjs | 繪製凝視線索、風道、地標、環境物件與殘響。 |
 | exploration.mjs | 管理凝視、風道、障礙、樹樁、殘響佇列及探索鏡頭。 |
 | fauna.mjs | 更新樹妖、青影鳥、映照、增殖及龍捲風施放行為。 |
@@ -83,19 +85,30 @@ HUD 主要由事件觸發 updateHud，音效也有事件型與每幀同步型，
 | 紅熊、詛咒與門 | boss.mjs、player-form.mjs | game.js beginBoss／hurt、boss-recovery.mjs、eye-bear-v2-browser.test.cjs |
 | 一般敵人與密度 | rats.mjs、slime.mjs、fauna.mjs、adventure.mjs | physics.mjs、eye-density.test.mjs、eye-slime.test.mjs |
 | 能量、藏品與回血 | rewards.mjs、adventure.mjs、health.mjs | feedback.mjs、boss-recovery.mjs、eye-balance-browser.test.cjs |
-| 教學提示與閱讀卡片 | guidance.mjs、message-card.mjs | game.js、style.css、eye-guidance-browser.test.cjs、eye-opening-browser.test.cjs |
+| 教學提示與閱讀卡片 | guidance.mjs、message-card.mjs | game.js、styles/guidance.css、eye-guidance-browser.test.cjs、eye-opening-browser.test.cjs |
 | 音效與音樂 | sfx.mjs、cues.mjs、combat-sounds.mjs、music.mjs | audio-settings.mjs、previews/sfx/index.html、eye-sfx-browser.test.cjs |
 | 存檔與續玩 | save.mjs、game.js 的快照與還原流程 | adventure.mjs 的版本／穩定 ID、eye-adventure.test.mjs |
-| 手機介面與按鍵 | handheld.mjs、index.html、style.css | game.js 輸入事件、eye-handheld-browser.test.cjs |
+| 手機介面與按鍵 | handheld.mjs、index.html、styles/handheld.css | game.js 輸入事件、eye-handheld-browser.test.cjs |
 | 區域裝置、尖刺與裝飾 | region-features.mjs、traps.mjs、terrain.mjs | exploration-art.mjs、eye-region-features.test.mjs |
 | 開路、風道與凝視 | breach.mjs、exploration.mjs、adventure.mjs | eye-vertical-breach.test.mjs、eye-adventure-browser.test.cjs |
 | 攻擊手感與光彈 | combat.mjs、magic.mjs、game.js | eye-combo.test.mjs、eye-charge-ground-browser.test.cjs |
 | 鏡頭舒適度 | exploration.mjs、game.js | eye-camera-browser.test.cjs |
+| 調整平衡數值 | config/balance.mjs | eye-replay.test.cjs、eye-balance-config.test.mjs；刻意改行為時才更新 golden |
+| 除錯測試工具 | debug.mjs | game.js 的隔離介面、eye-debug-browser.test.cjs |
 
 表中 src 與 tests 的檔名均相對於各自目錄。先找匯出函式及實際呼叫點，避免只改試聽頁或試玩入口。
 `?boss-preview=1` 使用同一套魔王程式；`?legacy=1` 是此分支舊生成器的回歸路徑，不等於 main 的發布快照。
 
 ## 安全修改與工具邊界
+
+**調整平衡只改 src/config/balance.mjs**，不要在使用參數的各模組重新寫死數值。
+依註解使用秒、像素與 HP；精靈畫法、碰撞取樣精度與關卡幾何仍留在各自模組，不屬於平衡表。
+candidate 數量保留穩定生成順序，population 決定探索版保留數量；legacy 是舊生成器的回歸預設。
+設定修改後重新載入；除錯面板的白名單欄位另支援即時變更，不儲存至旅程。
+
+`?debug=1` 才動態載入面板；一般網址與 debug=0 不建立面板、不要求除錯模組。
+debug 模式不讀寫、刪除休息燈存檔，以免臨時無敵、HP 與資源改動滲入正式進度。
+回放機制與修改基線程序見 [重構安全網](REFACTORING.md)。
 
 - 指令與分支規則以根目錄 [AGENTS.md](../AGENTS.md) 為準。
 - Prettier 覆蓋 src、tests、scripts 及本次工具設定；不重繪素材、不修改數值或存檔版本。

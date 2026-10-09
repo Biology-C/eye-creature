@@ -7,6 +7,7 @@
 - [AI 與人共同遵守的修改規則](../AGENTS.md)
 - [模組地圖、資料流與修改入口](ARCHITECTURE.md)
 - [本次整理與驗收紀錄](MAINTAINABILITY.md)
+- [Golden replay、數值表與除錯工具](REFACTORING.md)
 - [GitHub Pages 雙版本發布](PUBLISHING.md)
 - [授權](../LICENSE) 與 [素材來源](../ASSET_SOURCES.md)
 

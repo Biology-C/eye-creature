@@ -6,6 +6,7 @@
 
 開發入口：[修改規則](AGENTS.md) · [程式架構](docs/ARCHITECTURE.md) · [文件索引與現行／歷史分類](docs/README.md)。
 本地維護整理位於 `refactor/maintainability`；該分支的變更不代表線上版本已更新。
+平衡設定集中在 [balance.mjs](src/config/balance.mjs)；[重構安全網說明](docs/REFACTORING.md)包含三段輸入回放與 `?debug=1` 除錯工具。一般試玩不顯示除錯面板。
 
 獨立的像素風動作迷宮原型。扮演被魔王軍改造成生物兵器的勇者眼球，拍翼、滑翔並穿過「殘光培養所」，找到三顆引路光點逃出出口。
 

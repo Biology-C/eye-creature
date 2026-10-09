@@ -36,6 +36,7 @@ Linux CI 安裝瀏覽器時使用 `npx playwright install --with-deps chromium`�
 - 單檔不超過 400 行；新功能放在職責單一、能獨立測試的模組。
 - 禁止把多個敘述寫在同一行；以 `npm run format` 統一排版（printWidth 100）。
 - 不把玩法數值散落寫死：使用所屬模組的命名常數或既有設定，例如 boss.maxHp。
+  現在的平衡數值统一放 src/config/balance.mjs；調整平衡只改此檔，不在消費端複製常數。
 - 遊戲更新、碰撞與傷害仍用既有判定來源；渲染與音效不得另外扣血或改世界。
 - localStorage、音訊錯誤不得中斷遊戲；AudioContext 只在使用者操作後啟動。
 - 暫停、失焦、閱讀卡片時保持既有凍結及清除輸入規則。

@@ -1,7 +1,8 @@
 # 探索版現行規格快照
 
 狀態：**現行規格**。本文件整理實際實作，沒有提出新的玩法修改。
-基準是探索分支 f317d90，後續 refactor/maintainability 僅整理排版、工具與文件。
+玩法基準是探索分支 f317d90；refactor/maintainability 整理排版、工具與文件，並將相同數值
+移至 src/config/balance.mjs，加入回放安全網與僅 debug=1 可用的除錯工具。一般遊玩行為不變。
 程式位置見 [ARCHITECTURE](../ARCHITECTURE.md)；玩家操作見 [玩家說明](adventure-player-guide.md)。
 舊提案、逐次修改紀錄與美術提示詞統一保留為歷史資料，勿照其中舊數值覆蓋程式。
 
