@@ -2,6 +2,10 @@ const fs = require("node:fs"),
   path = require("node:path"),
   { spawn } = require("node:child_process");
 const { createServer } = require("./server.cjs");
+const group = process.argv[2] || "all";
+const patterns = { all: /\.test\.(cjs|mjs)$/, unit: /\.test\.mjs$/, browser: /\.test\.cjs$/ };
+if (!Object.hasOwn(patterns, group))
+  throw new Error("Usage: node scripts/test.cjs [all|unit|browser]");
 (async () => {
   process.chdir(path.resolve(__dirname, ".."));
   fs.mkdirSync("tests/artifacts", { recursive: true });
@@ -10,7 +14,7 @@ const { createServer } = require("./server.cjs");
   try {
     for (const test of fs
       .readdirSync("tests")
-      .filter((f) => /\.test\.(cjs|mjs)$/.test(f))
+      .filter((f) => patterns[group].test(f))
       .sort()) {
       console.log("\n" + test);
       const code = await new Promise((r) => {

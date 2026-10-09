@@ -1,3 +1,5 @@
+/* global step:readonly, test:readonly, levelSnapshot:readonly */
+// Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("fs"),
   path = require("path"),
   assert = require("node:assert/strict");
@@ -17,7 +19,11 @@ const { chromium } = pw;
   p.on("pageerror", (e) => errors.push(e.message));
   await p.route("**/game.js", async (r) => {
     let s = fs.readFileSync(path.join(__dirname, "../src/game.js"), "utf8");
-    s = s.replace("if(player&&ratImage)render()", "if(player&&ratImage&&!window.fast)render()");
+    // Ignore formatting when disabling rendering for the accelerated route simulation.
+    s = s.replace(
+      /if\s*\(\s*player\s*&&\s*ratImage\s*\)\s*render\(\)/,
+      "if(player&&ratImage&&!window.fast)render()",
+    );
     s +=
       "\nwindow.test={world,update,reset,keys,render,attack,get player(){return player},get rats(){return rats}};";
     await r.fulfill({ contentType: "application/javascript", body: s });

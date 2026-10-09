@@ -1,4 +1,7 @@
+/* global check:readonly */
+// Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("fs"),
+  // eslint-disable-next-line no-unused-vars -- Legacy binding retained for the no-behavior-change tooling pass; review in a separate cleanup.
   path = require("path"),
   assert = require("node:assert/strict");
 const { chromium } = require("playwright");

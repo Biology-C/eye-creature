@@ -1,3 +1,5 @@
+/* global v2:readonly */
+// Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
   assert = require("node:assert/strict"),
   { chromium } = require("playwright");

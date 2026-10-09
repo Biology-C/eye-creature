@@ -4,7 +4,9 @@ import {
   createExploration,
   collectEchoes,
   updateGaze,
+  // eslint-disable-next-line no-unused-vars -- Legacy binding retained for the no-behavior-change tooling pass; review in a separate cleanup.
   syncWinds,
+  // eslint-disable-next-line no-unused-vars -- Legacy binding retained for the no-behavior-change tooling pass; review in a separate cleanup.
   windAt,
   hitObstacle,
   syncStumps,

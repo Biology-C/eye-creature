@@ -1,3 +1,5 @@
+/* global gu:readonly */
+// Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
   assert = require("node:assert/strict"),
   { chromium } = require("playwright");
@@ -39,14 +41,12 @@ const fs = require("node:fs"),
         (process.env.BASE_URL || "http://127.0.0.1:8768/") + (phone ? "?handheld=1" : ""),
       );
       await p.locator("#start:not([disabled])").waitFor();
-      const intro = await p
-        .locator("#description")
-        .evaluate((e) => ({
-          text: e.innerText,
-          lines: e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight),
-          scroll: e.scrollWidth,
-          width: e.clientWidth,
-        }));
+      const intro = await p.locator("#description").evaluate((e) => ({
+        text: e.innerText,
+        lines: e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight),
+        scroll: e.scrollWidth,
+        width: e.clientWidth,
+      }));
       assert.ok(intro.lines <= 3.05, JSON.stringify(intro));
       assert.ok(intro.text.includes("你是勇者留下的眼睛。"));
       assert.ok(intro.text.includes("找回三道引路光，逃出培養所。"));

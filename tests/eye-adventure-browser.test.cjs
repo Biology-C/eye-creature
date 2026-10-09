@@ -1,3 +1,5 @@
+/* global a:readonly, levelSnapshot:readonly */
+// Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("fs"),
   assert = require("node:assert/strict"),
   { chromium } = require("playwright");

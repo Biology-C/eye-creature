@@ -39,6 +39,11 @@ jobs:
         run: |
           npm ci --prefix original
           npm ci --prefix exploration
+      - name: Verify exploration formatting and lint before publishing
+        working-directory: exploration
+        run: |
+          npm run format:check
+          npm run lint
       - name: Install browser
         working-directory: exploration
         run: npx playwright install --with-deps chromium

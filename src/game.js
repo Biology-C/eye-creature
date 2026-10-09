@@ -203,6 +203,7 @@ let dashHits = new Set(),
   activated,
   kills,
   deaths,
+  // eslint-disable-next-line no-unused-vars -- Legacy notice timestamp retained without changing runtime assignments in this tooling pass.
   noticeUntil = 0,
   attackUntil = 0,
   nextAttack = 0,
@@ -918,6 +919,7 @@ function releaseAttack() {
   }
   chargeStart = null;
 }
+// eslint-disable-next-line no-unused-vars -- Invoked by the browser regression harness appended to this module.
 function autoAttack() {
   if (player.slimeForm) {
     slimeAttack();
@@ -990,6 +992,7 @@ function finishBoss() {
   rats = rats.filter((r) => !r.bossMinion);
   syncForm();
 }
+// eslint-disable-next-line no-unused-vars -- Existing damage-source call signature retained; quiet HUD no longer displays this label.
 function hurt(source = "老鼠", damage = 1) {
   if (time < player.inv) return;
   const beforeHp = player.hp;

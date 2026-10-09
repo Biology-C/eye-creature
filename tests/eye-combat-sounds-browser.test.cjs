@@ -1,3 +1,5 @@
+/* global cs:readonly */
+// Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
   assert = require("node:assert/strict"),
   { chromium } = require("playwright");
@@ -63,6 +65,7 @@ const fs = require("node:fs"),
     assert.ok(dash.calls.some((e) => e.name === "defeat" && e.kind === "transform"));
     const big = await p.evaluate(() => {
       cs.prepare();
+      // eslint-disable-next-line no-unused-vars -- Legacy binding retained for the no-behavior-change tooling pass; review in a separate cleanup.
       const r = cs.rat(1, { big: true, bodyRadius: 20 });
       cs.attack();
       cs.update(0.001);

@@ -32,6 +32,7 @@ resetFaunaAfterDeath(s);
 assert.equal(t.hp, 0);
 assert.ok(s.birds.every((b) => b.hp === 0));
 const f = createFauna(w),
+  // eslint-disable-next-line no-unused-vars -- Legacy binding retained for the no-behavior-change tooling pass; review in a separate cleanup.
   z = f.zones[0],
   q = { x: -999, y: -999 };
 updateFauna(f, q, 1, 1, env);

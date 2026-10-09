@@ -5,13 +5,22 @@
   "description": "Eye Creature maze action prototype",
   "scripts": {
     "start": "node scripts/server.cjs",
-    "test": "node scripts/test.cjs"
+    "test": "node scripts/test.cjs",
+    "format": "prettier --write src tests scripts eslint.config.mjs .prettierrc.json",
+    "format:check": "prettier --check src tests scripts eslint.config.mjs .prettierrc.json",
+    "lint": "eslint src tests scripts eslint.config.mjs",
+    "test:unit": "node scripts/test.cjs unit",
+    "test:browser": "node scripts/test.cjs browser"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13.0"
   },
   "devDependencies": {
-    "playwright": "1.58.2"
+    "@eslint/js": "10.0.1",
+    "eslint": "10.12.0",
+    "globals": "17.13.0",
+    "playwright": "1.58.2",
+    "prettier": "3.9.9"
   },
   "license": "SEE LICENSE IN LICENSE"
 }

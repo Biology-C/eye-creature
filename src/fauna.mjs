@@ -96,6 +96,7 @@ export function meleeFauna(s, p, time, clear, targets = null) {
   let killed = 0,
     felled = 0;
   for (const e of [...s.trees, ...s.birds]) {
+    // eslint-disable-next-line no-unused-vars -- Legacy binding retained for the no-behavior-change tooling pass; review in a separate cleanup.
     const dx = (e.x - p.x) * p.face;
     if ((!targets || targets.includes(e)) && inMelee(p, e, clear)) {
       e.hp = Math.max(0, e.hp - 1);

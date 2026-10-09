@@ -4,6 +4,7 @@ import {
   installRegionFeatures,
   gustState,
   gustAt,
+  // eslint-disable-next-line no-unused-vars -- Legacy binding retained for the no-behavior-change tooling pass; review in a separate cleanup.
   stepGust,
   updateGustWarnings,
 } from "../src/region-features.mjs";
