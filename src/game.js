@@ -174,7 +174,7 @@ function runTutorials(){exploration.teaching=[];if(legacy)return;if(keys.has('up
  teach('root',exploration.obstacles.some(o=>!o.broken&&Math.hypot(o.x-player.x,o.y-player.y)<150),'連按 Space：直斬割根、迴旋清枝、第三段打破薄障礙。');
  teach('bird',fauna.birds.some(b=>b.hp&&Math.hypot(b.x-player.x,b.y-player.y)<190),'青影鳥會增殖！按 Q 映出鏡像，牠們會攻擊自己。');
  teach('spike',world.traps.some(t=>Math.hypot(t.x-player.x,t.y-player.y)<180),'尖刺每三秒升降，等它收起再通過。');
- teach('charge',rats.some(r=>r.hp&&Math.hypot(r.x-player.x,r.y-player.y)>170&&Math.hypot(r.x-player.x,r.y-player.y)<330),'遠處按住 Space 0.8 秒再放開：大型光彈。');
+ teach('charge',!crackedWalls.some(w=>w.id==='duct-intro'&&!w.broken)&&rats.some(r=>r.hp&&Math.hypot(r.x-player.x,r.y-player.y)>170&&Math.hypot(r.x-player.x,r.y-player.y)<330),'遠處按住 Space 0.8 秒再放開：大型光彈。');
  teach('dash',world.traps.some(t=>Math.hypot(t.x-player.x,t.y-player.y)<180),'Shift 可以快速衝刺。');
 }
 function captureCheckpoint(){return {time,kills,deaths,checkpoint:{...checkpoint},player:{hp:player.hp,abilities:{...player.abilities},energy:player.energy,healCharge:player.healCharge},rats:structuredClone(rats),fauna:{trees:structuredClone(fauna.trees),birds:structuredClone(fauna.birds),zones:structuredClone(fauna.zones)},walls:structuredClone(crackedWalls),exploration:structuredClone(exploration),lights:structuredClone(lights),rewards:structuredClone(rewards),torches:structuredClone(torches),seen:[...seen],activated:[...activated],bossDefeated:boss.hp===0}}
@@ -217,8 +217,6 @@ for(const reward of rewards)if(!reward.got&&Math.hypot(player.x-reward.x,player.
  pickupSounds.push(reward.kind==='relic'?{kind:'relic'}:{});
  if(reward.kind==='relic')importantMessages.push(relicMessage(reward,handheld));
  pickupFlash={x:reward.x,y:reward.y,until:time+.7,kind:reward.kind,amount:reward.amount||1,healed:reward.healed||0,percent:Math.round((reward.restored||0)/MAX_WING*100)};updateHud();
- if(reward.kind==='energy'&&player.energy>=30&&!exploration.tutorials.includes('energy-ready')){learn(exploration,'energy-ready');guidance.say('橘色能量已足夠，可以破牆了。',time,4);exploration.quietUntil=time+19;}
-
 }
 let collectedOrb=false;
 for(const l of lights)if(!l.got&&Math.hypot(player.x-l.x,player.y-l.y)<30){l.got=true;collectedOrb=true;sfx.play('orb');updateHud();say(lights.every(p=>p.got)?'三顆光點齊了！感應出口方向，繼續前進。':'找到引路光點！繼續探索上下岔路。')}

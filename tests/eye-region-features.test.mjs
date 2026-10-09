@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {buildAdventure} from '../src/adventure.mjs';
 import {installRegionFeatures,gustState,gustAt,stepGust,updateGustWarnings} from '../src/region-features.mjs';
-import {addSurfaceSpikes,removeSpikeShelters,trapSupported,touchesSpikes} from '../src/traps.mjs';
+import {addSurfaceSpikes,removeSpikeShelters,trapSupported,touchesSpikes,spikeState} from '../src/traps.mjs';
 import {createPhysics,RUN_SPEED} from '../src/physics.mjs';
 import {createFauna,updateFauna} from '../src/fauna.mjs';
 for(let seed=0;seed<100;seed++){
@@ -16,7 +16,17 @@ for(let seed=0;seed<100;seed++){
   for(const e of [...w.rats,...w.pureSpawns,...w.bigSpawns,...w.faunaSpec.trees,...w.faunaSpec.birds])assert.ok(Math.hypot(Math.max(g.x-e.x,0,e.x-g.x-g.w),Math.max(g.y-e.y,0,e.y-g.y-g.h))>=120);
  }
  for(const t of w.traps.filter(t=>t.id?.startsWith('mirror-wall'))){assert.ok(trapSupported(t,solid));assert.equal(w.regionAt(t.x+(t.angle>0?30:-30),t.y),2);assert.ok(w.platforms.some(p=>t.waiting.x>=p.x+11&&t.waiting.x<=p.x+p.w-11&&Math.abs(p.y-t.waiting.y-11.01)<.1));assert.ok(!solid(t.waiting.x,t.waiting.y));for(let time=0;time<6;time+=.05)assert.equal(touchesSpikes(t.waiting,t,time),false)}
+ const pair=w.traps.filter(t=>t.id?.startsWith('mirror-wall'));assert.equal(pair.length,2);assert.equal(pair[0].node,pair[1].node);assert.equal(pair[1].x-pair[0].x,96);
+ for(const t of pair)for(let d=1;d<t.w;d+=4){const y=t.y+Math.sin(t.angle)*d,dir=Math.sign(t.angle);assert.ok(solid(t.x-dir*2,y),'entire strip anchored in wall');assert.ok(!solid(t.x+dir*2,y),'spikes face open shaft');}
+ for(let time=0;time<6;time+=.025)assert.ok(pair.filter(t=>spikeState(time+t.offset).height>0).length<=1,'alternating sides never close together');
  assert.equal(w.regionProps.filter(p=>p.kind==='vines').length>0,true);
+}
+// Cross the narrow shaft without damage using either side's retracted window.
+for(const fps of [30,60,120])for(const phase of [.1,3.1]){
+ const w=buildAdventure();installRegionFeatures(w);const pair=w.traps.filter(t=>t.id?.startsWith('mirror-wall')),phy=createPhysics(w.map,32,w.platforms);
+ const p={...pair[0].waiting,x:pair[0].x+(phase<3?20:76),vy:0,wing:.7,face:1,grounded:true};let crossed=false;
+ for(let i=0;i<fps*.65;i++){phy.player(p,new Set(['up']),1/fps);for(const t of pair)assert.equal(touchesSpikes(p,t,phase+(i+1)/fps),false);if(p.y<Math.min(pair[0].y,pair[1].y-pair[1].w)-12)crossed=true;}
+ assert.ok(crossed,'safe flap path through either alternating window');
 }
 for(const [t,active,warning]of [[0,true,false],[4.999,true,false],[5,false,false],[6.499,false,false],[6.5,false,true],[6.999,false,true],[7,true,false]])assert.deepEqual([gustState(t).active,gustState(t).warning],[active,warning]);
 const outcomes=[];

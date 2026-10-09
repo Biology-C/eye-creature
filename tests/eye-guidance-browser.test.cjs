@@ -33,7 +33,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
  await p.evaluate(()=>gu.say('手動提示',4));await p.evaluate(()=>gu.render());assert.equal(await p.locator('#notice').innerText(),'手動提示');assert.equal(await p.locator('#guidance-arrow').isVisible(),false);assert.equal(await p.locator('#notice:visible').count(),1);
  // Real pickups, damage and saves preserve their effects without repetitive prose.
  await p.evaluate(()=>{gu.prepare();gu.p.energy=0;gu.pickup('energy');gu.pickup('wing')});assert.equal(await p.locator('#notice').isVisible(),false);assert.equal(await p.evaluate(()=>gu.p.energy),1);assert.ok(await p.locator('#healing').evaluate(e=>e.classList.contains('resource-flash')));
- await p.evaluate(()=>{gu.p.energy=29;gu.pickup('energy')});assert.ok((await p.locator('#notice').innerText()).includes('可以破牆'));await p.evaluate(()=>{gu.wait(5);gu.p.energy=29;gu.pickup('energy')});assert.equal(await p.locator('#notice').isVisible(),false);
+ await p.evaluate(()=>{gu.p.energy=29;gu.pickup('energy')});assert.equal(await p.locator('#notice').isVisible(),false);await p.evaluate(()=>{gu.wait(5);gu.p.energy=29;gu.pickup('energy')});assert.equal(await p.locator('#notice').isVisible(),false);
  await p.evaluate(()=>{gu.p.inv=0;gu.hurt('針刺');gu.render()});assert.equal(await p.evaluate(()=>gu.p.hp),4);assert.equal(await p.locator('#notice').isVisible(),false);
  await p.evaluate(()=>{gu.saveCheckpoint();gu.render()});assert.equal(await p.locator('#notice').isVisible(),false);assert.equal(await p.locator('#saved-icon').isVisible(),true);await p.evaluate(()=>gu.wait(2.1));assert.equal(await p.locator('#saved-icon').isVisible(),false);
  // Completion suppresses tutorials after snapshot restore, with no delayed queue.
@@ -49,5 +49,5 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
  await p.evaluate(()=>{gu.prepare();document.body.classList.add('light');gu.near(10);gu.pause();gu.render()});assert.equal(await p.locator('#notice').isVisible(),false);await p.locator('#pause-details summary').click();assert.ok((await p.locator('#pause-details details').innerText()).includes(phone?'A':'Space'));
  assert.deepEqual(errors,[]);await p.close();
  }
- console.log('PASS quiet exploration: one-time wall E/A then badge, explicit failure/help, silent pickups/hurt/saves, first 30 energy once, 15s tutorial silence/no queue, learned snapshot, title-only regions, readable desktop/phone UI');
+ console.log('PASS quiet exploration: one-time wall E/A then badge, explicit failure/help, silent pickups/hurt/saves, first 30 energy waits for wall, 15s tutorial silence/no queue, learned snapshot, title-only regions, readable desktop/phone UI');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

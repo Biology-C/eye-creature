@@ -1,5 +1,5 @@
 // Authored spine with deterministic optional branches. Coordinates are 32px tiles.
-export const LEVEL_VERSION='adventure-4';
+export const LEVEL_VERSION='adventure-5';
 export function buildAdventure(seed=2917){
  const T=32,cols=20,rows=16,W=163,H=131,stride=8;
  const graph=Array.from({length:cols*rows},()=>[]),used=new Set(),edges=[],main=[];
@@ -44,7 +44,7 @@ export function buildAdventure(seed=2917){
  const safes=safeNodes.map((n,i)=>({id:'lamp-'+i,...position(n),y:(tile(n).y+5)*T-12}));
  const eligible=[...new Set([...main,...used])].filter((n,i)=>i>8&&!(n%cols<=6&&Math.floor(n/cols)>=8)&&!branches.some(b=>b.node===n)&&!safeNodes.includes(n)&&!lightNodes.includes(n)&&[0,1,2,3,4].every(d=>map[tile(n).y+5]?.[tile(n).x+d]===1));
  const picked=new Set();function select(count,offset=0){const out=[];for(let k=0;k<eligible.length&&out.length<count;k++){const n=eligible[(k*7+offset)%eligible.length];if(!picked.has(n)){picked.add(n);out.push(n)}}for(const n of eligible)if(out.length<count&&!picked.has(n)){picked.add(n);out.push(n)}return out}
- const ratNodes=[node(3,10),...select(11)],pure=select(10,2),big=select(3,4),treeNodes=select(3,6);
+ const ratNodes=[node(6,10),...select(11)],pure=select(10,2),big=select(3,4),treeNodes=select(3,6);
  // Retain stable spawn IDs and main-route encounters before optional duplicates.
  const retain=(list,count)=>list.sort((a,b)=>Number(!main.includes(a.node))-Number(!main.includes(b.node))).slice(0,count);
  const rats=ratNodes.map((n,i)=>({id:'rat-'+i,...floorPoint(n)}));
@@ -56,13 +56,15 @@ export function buildAdventure(seed=2917){
  const trapNodes=eligible.filter(n=>!ratNodes.includes(n)&&!treeNodes.includes(n)).filter((_,i)=>i>0&&i%4===0).slice(0,4),traps=trapNodes.map(n=>({x:(tile(n).x+1.5)*T,y:(tile(n).y+5)*T,w:64,node:n}));
  const rewards=[];const energy=(id,x,y,amount=1)=>rewards.push({id,x,y,kind:'energy',amount,got:false,node:0});
  for(let i=0;i<30;i++)energy('intro-energy-'+i,start.x+90+i*34,(tile(node(1,10)).y+5)*T-26);
+ // Three forgiving pickups on the same safe floor, before the first crack.
+ for(const [i,dx]of [260,600,900].entries())energy('intro-reserve-'+i,start.x+dx,(tile(node(1,10)).y+5)*T-26,4);
  for(const [i,n]of main.entries())if(i>7&&i%4===0){const p=floorPoint(n);energy('energy-'+n,p.x,p.y-8,5)}
  for(const [i,n]of main.entries())if(i>6&&i%5===0){const p=position(n);rewards.push({id:'wing-'+n,node:n,...p,kind:'wing',got:false})}
  const abilities=['spread','dash','breach'],names=['稜光徽章','疾風緞帶','破界劍柄'];
  branches.filter(b=>b.kind==='relic').forEach((b,i)=>rewards.push({id:'relic-'+i,node:b.node,...position(b.node),kind:'relic',ability:abilities[i],name:names[i],got:false}));
- // +60% total orange energy (110 -> 176), concentrated after the second relic area.
- // Keep the initial 30-point lesson; retain the existing routes and stable pickup IDs.
- const energySites=rewards.filter(r=>r.kind==='energy'&&!r.id.startsWith('intro-energy')).slice(8);
+ // Preserve the earlier +66-point mid/late bonus, independently of intro reserves.
+ // Retain existing routes, pickup IDs, amounts and positions after the first wall.
+ const energySites=rewards.filter(r=>r.kind==='energy'&&!r.id.startsWith('intro-')).slice(8);
  const relicSites=rewards.filter(r=>r.kind==='relic');
  for(let i=0;i<28;i++){
   let x,y;

@@ -4,9 +4,11 @@ export function installRegionFeatures(world){
  world.gusts=[{node:45,direction:-1},{node:64,direction:1}].map((v,i)=>{
   const p=world.tile(v.node);return {...v,id:'root-gust-'+i,x:p.x*32+16,y:(p.y+2)*32,w:128,h:96};
  });
- for(const [i,node]of [94,114].entries()){
-  const p=world.tile(node),left=i===0,x=(p.x+(left?0:5))*32,y=(p.y+(left?1:3))*32;
-  world.traps.push({id:'mirror-wall-'+i,node,x,y,w:64,angle:left?Math.PI/2:-Math.PI/2,offset:i*3,waiting:{x:(p.x+2.5)*32,y:(p.y+3)*32-11.01}});
+ // Stagger two alternating strips on the narrow shaft above the waiting chamber.
+ // Anchor to the actual inner faces (three-tile shaft), not the wider room walls.
+ for(const [i,node]of [114,114].entries()){
+  const p=world.tile(node),left=i===0,x=(p.x+(left?1:4))*32,y=(p.y+(left?-2:-1))*32;
+  world.traps.push({id:'mirror-wall-'+i,node,x,y,w:64,angle:left?Math.PI/2:-Math.PI/2,offset:i*3,waiting:{x:(p.x+2.5)*32,y:(p.y+1)*32-11.01}});
  }
  world.regionProps=world.used.map(node=>{
   const p=world.tile(node),pos=world.position(node),region=world.regionAt(pos.x,pos.y);
