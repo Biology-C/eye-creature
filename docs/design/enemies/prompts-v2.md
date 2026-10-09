@@ -1,3 +1,5 @@
+歷史紀錄，可能已過時，以 docs/ARCHITECTURE.md 與現行規格為準。
+
 # Creature concepts V2
 
 Tool: built-in image_gen. Pixel concept artwork; not animation assets.

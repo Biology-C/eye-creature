@@ -1,3 +1,5 @@
+歷史紀錄，可能已過時，以 docs/ARCHITECTURE.md 與現行規格為準。
+
 # 第一關敵人圖稿
 
 工具：內建 image_gen。先生成四格灰鼠，再依使用者新增設定修訂為四欄兩列的透明圖集。原始輸出保留於 .codex/generated_images；專案素材為 rats.png。

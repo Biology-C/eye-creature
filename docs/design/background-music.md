@@ -1,3 +1,5 @@
+歷史紀錄，可能已過時，以 docs/ARCHITECTURE.md 與現行規格為準。
+
 # 探索版背景音樂
 
 本次僅修改 feature/first-adventure-rework；原版 main 不變。

@@ -1,3 +1,5 @@
+歷史紀錄，可能已過時，以 docs/ARCHITECTURE.md 與現行規格為準。
+
 2026-09-28: extracted local eye-creature-v2 prototype from Biology-C/mousemaze.
 Source repository HEAD: 98fb779426f85cba80cdf67b5005339f645b8fac.
 The prototype and eye-* tests were untracked; this initial commit is a local snapshot, not recovered Git history.

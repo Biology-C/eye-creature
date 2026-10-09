@@ -1,3 +1,5 @@
+歷史紀錄，可能已過時，以 docs/ARCHITECTURE.md 與現行規格為準。
+
 # 探索版：能量與戰鬥數值調整
 
 2026-10-08 完成本機驗證；2026-10-09 經使用者確認，納入 `feature/first-adventure-rework` 發布。原版 `main` 不變。

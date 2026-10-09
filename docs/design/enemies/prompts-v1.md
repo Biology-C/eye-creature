@@ -1,3 +1,5 @@
+歷史紀錄，可能已過時，以 docs/ARCHITECTURE.md 與現行規格為準。
+
 # Enemy comparison V1
 
 Tool: built-in image_gen. Concept exploration, no reference image or game-code changes.

@@ -1,3 +1,5 @@
+歷史紀錄，可能已過時，以 docs/ARCHITECTURE.md 與現行規格為準。
+
 > 歷史規劃，已由 2026-09-28 的 MIGRATION.md 與根目錄 README／LICENSE 取代；其中沿用 MIT 的建議不代表現行新內容授權。
 
 # 眼球怪獨立專案搬移計畫

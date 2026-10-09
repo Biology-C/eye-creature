@@ -1,3 +1,5 @@
+歷史紀錄，可能已過時，以 docs/ARCHITECTURE.md 與現行規格為準。
+
 # 青影鳥與樹妖素材
 
 工具：內建 image_gen；參考 enemies/creatures-v3-shadow-bird.png，輸出 fauna.png，2×2 透明圖集。

@@ -4,6 +4,9 @@
 
 [English](README_EN.md) · [原作 Mouse Maze](https://github.com/Biology-C/mousemaze)
 
+開發入口：[修改規則](AGENTS.md) · [程式架構](docs/ARCHITECTURE.md) · [文件索引與現行／歷史分類](docs/README.md)。
+本地維護整理位於 `refactor/maintainability`；該分支的變更不代表線上版本已更新。
+
 獨立的像素風動作迷宮原型。扮演被魔王軍改造成生物兵器的勇者眼球，拍翼、滑翔並穿過「殘光培養所」，找到三顆引路光點逃出出口。
 
 這是從 Mouse Maze 實驗區拆出的獨立遊戲；之後程式、素材、議題與版本均在本 repository 維護。Mouse Maze 的原始冒險、教育與機關迷宮模式繼續留在原專案。
@@ -12,7 +15,7 @@
 
 新版位於 `feature/first-adventure-rework`，獨立發布到 `/preview/`；首頁繼續提供 `main` 的原版。兩版程式各自維護，參閱[發布方式](docs/PUBLISHING.md)。桌面保留鍵盤操作；手機已加入獨立掌機介面（綠底黑像素、灰階操作區、彩色遊戲畫面）。固定主線加六條種子支路，包含自動凝視、三組風道、三種連段清障、勇者殘響、五座休息燈存檔。敵人首輪重排為8隻水晶老鼠、7隻純史萊姆、2隻紫色大史萊姆、3隻樹妖及4隻初始青影鳥；每個主題區每3秒增殖一隻、同時上限4隻，離區停止計時。
 
-[玩家說明](docs/design/adventure-player-guide.md) · [工程與階段規格](docs/design/adventure-rework-spec.md) · [驗收與待真人試玩項目](docs/design/adventure-validation.md)
+[玩家說明](docs/design/adventure-player-guide.md) · [現行規格](docs/design/current-game-spec.md) · [歷史階段規劃](docs/design/adventure-rework-spec.md) · [歷史驗收與待真人試玩項目](docs/design/adventure-validation.md)
 
 ## 探索版新版紅熊與音效
 

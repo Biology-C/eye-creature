@@ -12,7 +12,20 @@
 
 `versions.json` 記錄實際部署的兩個 commit，供回報與回復使用。部署不包含 node_modules、.git、測試產物或本機日誌。授權與素材來源隨兩個版本一同提供。
 
-需要重新發布時，可在 Actions 手動執行 Publish both playable versions（選 main）。推送新版仍使用 `git push origin feature/first-adventure-rework`，原版使用 `git push origin main`。不要改回單一分支根目錄部署，否則 preview 入口會消失。
+需要重新發布時，經使用者授權後可在 Actions 手動執行 Publish both playable versions（選 main）。探索版先將任務分支經檢查合回 feature/first-adventure-rework，再推送該分支；原版變更透過審查合併，不直接 push main、不 force push。不要改回單一分支根目錄部署，否則 preview 入口會消失。
+
+## 維護整理分支的檢查門檻
+
+refactor/maintainability 的 Test 在 npm ci 後先跑 format:check 與 lint，再跑完整測試。
+任何檢查失敗都使 Test 失敗；自動 Pages 流程僅接受成功的 Test。
+本次準備的 pages.yml 亦在驗證探索快照時先跑 format:check 與 lint，手動發布同样受此限制。
+原版快照尚無這兩個 scripts，保留原版原有 npm test 檢查。
+
+注意：workflow_run 使用預設分支 main 上的發布流程。本次不修改或推送 main，
+因此上述 pages.yml 的新門檻目前只是此分支準備好的設定，並非已在線上生效。
+正式採用時，先審查合併維護分支到探索分支，再以獨立審查同步共用 pages.yml 到 main，
+確保探索快照已有對應 scripts 後才啟用新發布檢查，勿把探索玩法程式一起合入 main。
+refactor/maintainability 不在 Pages 自動發布分支清單內；本次任務不推送、不部署。
 
 回復遊戲版本：在對應分支 revert 有問題的遊戲 commit，通過測試後會重新打包兩版；避免回復共用部署檔。若部署本身失敗，既有 Pages 部署保持可用。
 

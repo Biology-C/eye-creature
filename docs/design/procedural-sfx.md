@@ -1,3 +1,5 @@
+歷史紀錄，可能已過時，以 docs/ARCHITECTURE.md 與現行規格為準。
+
 # 探索改造版程式音效整合
 
 限定 `feature/first-adventure-rework`，未套用 patch 的 main 遊戲檔案；不變更傷害、冷卻、輸入、鏡頭。指定三個新檔案由 patch 篩選匯入，再依分支調整瀏覽器測試及音訊解鎖。

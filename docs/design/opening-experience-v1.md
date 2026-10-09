@@ -1,3 +1,5 @@
+歷史紀錄，可能已過時，以 docs/ARCHITECTURE.md 與現行規格為準。
+
 # 開場體驗修正
 
 2026-10-09，`feature/first-adventure-rework`。僅本機修改，不提交或推送。

@@ -1,3 +1,5 @@
+歷史紀錄，可能已過時，以 docs/ARCHITECTURE.md 與現行規格為準。
+
 # 內建 image_gen 提示詞紀錄
 
 ## 結構圖
