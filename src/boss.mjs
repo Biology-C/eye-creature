@@ -1,11 +1,8 @@
+import { BALANCE as B } from "./config/balance.mjs";
 import { MAX_HP } from "./health.mjs";
 import { dropRecovery, collectRecovery, drawRecovery } from "./boss-recovery.mjs";
-export const BOSS_MAX_HP = 36;
-export const BOSS_WAVES = [
-  { ratio: 0.75, kinds: ["rat", "rat"] },
-  { ratio: 0.5, kinds: ["slime", "slime", "slime"] },
-  { ratio: 0.2, kinds: ["big"] },
-];
+export const BOSS_MAX_HP = B.boss.maxHp;
+export const BOSS_WAVES = B.boss.waves;
 export function addBossArena(world) {
   const top = world.H + 2,
     T = world.T;
@@ -25,7 +22,7 @@ export function addBossArena(world) {
 function resetEncounter(b) {
   Object.assign(b, {
     state: "rest",
-    timer: 1.5,
+    timer: B.boss.initialRest,
     cycle: 0,
     cursed: false,
     stun: 0,
@@ -42,7 +39,7 @@ function resetEncounter(b) {
 }
 export function createBoss(world) {
   const a = world.arena,
-    maxHp = BOSS_MAX_HP,
+    maxHp = B.boss.maxHp,
     b = {
       x: 576,
       y: a.floor - 38,
@@ -62,7 +59,14 @@ export function enterBoss(b, p, a) {
   b.active = true;
   b.x = 576;
   b.y = a.floor - 38;
-  Object.assign(p, { x: a.start.x, y: a.start.y, vy: 0, wing: 0.7, hp: MAX_HP, dashRemaining: 0 });
+  Object.assign(p, {
+    x: a.start.x,
+    y: a.start.y,
+    vy: 0,
+    wing: B.player.maxWing,
+    hp: MAX_HP,
+    dashRemaining: 0,
+  });
 }
 export function resetBoss(b) {
   b.active = false;
@@ -92,7 +96,7 @@ export function bossSummons(b, p, kinds, living = 0) {
     ];
   // Ground spawns prefer the side away from the player, with a full second of grace.
   positions.sort((x, y) => Math.abs(y - p.x) - Math.abs(x - p.x));
-  return kinds.slice(0, Math.max(0, 6 - living)).map((kind, i) => {
+  return kinds.slice(0, Math.max(0, B.boss.minionCap - living)).map((kind, i) => {
     const x = positions[i],
       big = kind === "big",
       r = big ? 22 : 14;
@@ -106,7 +110,7 @@ export function bossSummons(b, p, kinds, living = 0) {
       a: a.left + 40,
       b: a.right - 40,
       face: x < p.x ? 1 : -1,
-      hp: big ? 3 : kind === "rat" ? 2 : 1,
+      hp: big ? B.enemy.bigHp : kind === "rat" ? B.enemy.ratHp : B.enemy.slimeHp,
       pure: kind !== "rat",
       big,
       bodyRadius: r,
@@ -114,7 +118,7 @@ export function bossSummons(b, p, kinds, living = 0) {
       radiusY: r,
       surface: null,
       state: "rest",
-      timer: 1,
+      timer: B.boss.summonGrace,
       stun: 0,
       vy: 0,
     };
@@ -122,37 +126,41 @@ export function bossSummons(b, p, kinds, living = 0) {
 }
 function beginStrike(b, p, time, events) {
   b.state = "strike";
-  b.timer = b.attack === "stomp" ? 0.45 : 0.3;
+  b.timer = b.attack === "stomp" ? B.boss.stompDuration : B.boss.strike;
   if (b.attack === "curse") {
     b.cursed = true;
     events.curse?.();
   }
   if (b.attack === "bolt")
-    for (const offset of [-0.18, 0, 0.18]) {
+    for (const offset of B.boss.boltAngles) {
       const angle = b.aim + offset;
       b.shots.push({
         x: b.x + b.face * 34,
         y: b.y - 17,
-        vx: Math.cos(angle) * 245,
-        vy: Math.sin(angle) * 245,
-        life: 3,
-        radius: 9,
+        vx: Math.cos(angle) * B.boss.boltSpeed,
+        vy: Math.sin(angle) * B.boss.boltSpeed,
+        life: B.boss.boltLife,
+        radius: B.boss.boltRadius,
         kind: "bolt",
       });
     }
   if (b.attack === "stomp") {
-    b.effects.push({ x: b.x, y: b.arena.floor, until: time + 0.45, kind: "stomp" });
-    if (Math.abs(p.x - b.x) < 126 && p.y > b.arena.floor - 46 && events.clear(b.x, b.y, p.x, p.y))
-      events.hurt("紅熊重踏");
+    b.effects.push({ x: b.x, y: b.arena.floor, until: time + B.boss.stompDuration, kind: "stomp" });
+    if (
+      Math.abs(p.x - b.x) < B.boss.stompReach &&
+      p.y > b.arena.floor - B.boss.stompHeight &&
+      events.clear(b.x, b.y, p.x, p.y)
+    )
+      events.hurt("紅熊重踏", B.boss.damage);
     if (!b.active || b.hp <= 0) return; // A lethal stomp may have reset the encounter.
     for (const dir of [-1, 1])
       b.shots.push({
         x: b.x + dir * 40,
         y: b.arena.floor - 10,
-        vx: dir * 190,
+        vx: dir * B.boss.waveSpeed,
         vy: 0,
-        life: 2.6,
-        radius: 10,
+        life: B.boss.waveLife,
+        radius: B.boss.waveRadius,
         kind: "wave",
       });
     if (b.cursed && !b.mirrors.length) {
@@ -189,31 +197,29 @@ export function updateBoss(b, p, dt, time, events) {
     if (b.timer <= 0) {
       if (b.state === "rest") {
         b.state = "ready";
-        b.timer = 1;
+        b.timer = B.boss.warning;
         b.face = p.x < b.x ? -1 : 1;
-        b.attack = b.cursed
-          ? "stomp"
-          : ["claw", "bolt", "curse", "stomp", "bolt", "stomp"][b.cycle++ % 6];
+        b.attack = b.cursed ? "stomp" : B.boss.attackCycle[b.cycle++ % B.boss.attackCycle.length];
         b.aim = Math.atan2(p.y - (b.y - 17), p.x - (b.x + b.face * 34));
       } else if (b.state === "ready") beginStrike(b, p, time, events);
       else {
         b.state = "rest";
-        b.timer = 1.35;
+        b.timer = B.boss.rest;
       }
     }
-    if (b.state === "rest" && time >= b.stun && Math.abs(p.x - b.x) > 110) {
-      b.x += Math.sign(p.x - b.x) * 60 * step;
+    if (b.state === "rest" && time >= b.stun && Math.abs(p.x - b.x) > B.boss.approachRange) {
+      b.x += Math.sign(p.x - b.x) * B.boss.speed * step;
       b.x = Math.max(b.arena.left + 66, Math.min(b.arena.right - 68, b.x));
     }
     if (
       b.state === "strike" &&
       b.attack === "claw" &&
-      (p.x - b.x) * b.face >= -20 &&
-      (p.x - b.x) * b.face < 130 &&
-      Math.abs(p.y - b.y) < 68 &&
+      (p.x - b.x) * b.face >= B.boss.clawBehind &&
+      (p.x - b.x) * b.face < B.boss.clawReach &&
+      Math.abs(p.y - b.y) < B.boss.clawHeight &&
       events.clear(b.x, b.y, p.x, p.y)
     )
-      events.hurt("紅熊揮爪");
+      events.hurt("紅熊揮爪", B.boss.damage);
     b.shots = b.shots.filter((s) => {
       s.x += s.vx * step;
       s.y += s.vy * step;
@@ -228,13 +234,13 @@ export function updateBoss(b, p, dt, time, events) {
       )
         return false;
       if (Math.abs(s.x - p.x) < s.radius + 11 && Math.abs(s.y - p.y) < s.radius + 11) {
-        events.hurt(s.kind === "bolt" ? "紅熊吐息" : "重踏震波");
+        events.hurt(s.kind === "bolt" ? "紅熊吐息" : "重踏震波", B.boss.damage);
         return false;
       }
       return true;
     });
     for (const m of b.mirrors) {
-      m.vy = Math.min(320, m.vy + 620 * step);
+      m.vy = Math.min(B.boss.mirrorFallSpeed, m.vy + B.boss.mirrorGravity * step);
       m.y = Math.min(b.arena.floor - 16, m.y + m.vy * step);
       m.landed = m.y >= b.arena.floor - 16;
     }
@@ -249,7 +255,9 @@ export function updateBoss(b, p, dt, time, events) {
   b.effects = b.effects.filter((e) => e.until > time);
   if (
     b.cursed &&
-    b.mirrors.some((m) => m.landed && Math.hypot(m.x - p.x, m.y - p.y) < 34) &&
+    b.mirrors.some(
+      (m) => m.landed && Math.hypot(m.x - p.x, m.y - p.y) < B.boss.mirrorPickupRange,
+    ) &&
     clearBossCurse(b)
   )
     events.cured?.();

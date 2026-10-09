@@ -1,4 +1,5 @@
-export const BREACH_COST = 30;
+import { BALANCE as B } from "./config/balance.mjs";
+export const BREACH_COST = B.energy.breachCost;
 export function createCrackedWalls(world) {
   if (world.crackedSpec) return structuredClone(world.crackedSpec);
   const walls = [];

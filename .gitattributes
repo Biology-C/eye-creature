@@ -1,0 +1,2 @@
+# Match EditorConfig / Prettier on Windows checkouts as well as Linux CI.
+* text=auto eol=lf

@@ -1,3 +1,4 @@
+import { BALANCE as B } from "./config/balance.mjs";
 // Presentation only: never changes wall discovery, collision, resources or combat.
 export function wallDistance(p, w) {
   return Math.hypot(
@@ -12,9 +13,9 @@ export function nearestCrack(p, walls) {
 }
 export function breachPrompt(p, w, handheld) {
   const direction = w.axis === "vertical" ? (p.y < w.y + w.h / 2 ? "↓ " : "↑ ") : "";
-  return p.energy >= 30
+  return p.energy >= B.energy.breachCost
     ? `${direction}${handheld ? "長按 A 打破" : "按 E 打破"}`
-    : `${direction}收集 30 橘色能量才能打破（目前 ${p.energy}/30）`;
+    : `${direction}收集 ${B.energy.breachCost} 橘色能量才能打破（目前 ${p.energy}/${B.energy.breachCost}）`;
 }
 export function createGuidance(element, handheld) {
   let until = 0,
@@ -49,7 +50,7 @@ export function createGuidance(element, handheld) {
     get priority() {
       return kind === "critical" || kind === "region" || kind === "reminder";
     },
-    say(text, time, duration = 4, options = {}) {
+    say(text, time, duration = B.guidance.duration, options = {}) {
       if (kind === "critical" && time < until && options.kind !== "critical") return false;
       until = time + duration;
       kind = options.kind || "hint";
@@ -65,7 +66,7 @@ export function createGuidance(element, handheld) {
       return true;
     },
     saved(time) {
-      savedUntil = time + 2;
+      savedUntil = time + B.guidance.savedDuration;
     },
     reset() {
       until = 0;
@@ -89,9 +90,9 @@ export function createGuidance(element, handheld) {
         mode !== "playing" ||
         boss.active ||
         p.slimeForm ||
-        p.energy < 30 ||
+        p.energy < B.energy.breachCost ||
         !w ||
-        wallDistance(p, w) > 120 ||
+        wallDistance(p, w) > B.guidance.wallRange ||
         time < until;
       if (!badge.hidden) {
         const dir = w.axis === "vertical" ? (p.y < w.y + w.h / 2 ? "↓ " : "↑ ") : "";
@@ -122,13 +123,21 @@ export function learn(s, ...ids) {
   s.tutorials ??= [];
   for (const id of ids) if (!s.tutorials.includes(id)) s.tutorials.push(id);
 }
-export function tutorial(s, ui, id, text, time, duration = 4, { critical = false } = {}) {
+export function tutorial(
+  s,
+  ui,
+  id,
+  text,
+  time,
+  duration = B.guidance.duration,
+  { critical = false } = {},
+) {
   if (s.tutorials?.includes(id) || (!critical && (time < ui.until || time < (s.quietUntil ?? 0))))
     return false;
   if (ui.say(text, time, duration, { kind: critical ? "critical" : "tutorial" }) === false)
     return false;
   learn(s, id);
-  s.quietUntil = time + duration + 15;
+  s.quietUntil = time + duration + B.guidance.quiet;
   return true;
 }
 export function updateGuidance(s, { world, p, walls, boss, time, handheld }, ui) {
@@ -137,7 +146,7 @@ export function updateGuidance(s, { world, p, walls, boss, time, handheld }, ui)
   const region = boss.active ? "boss" : world.regionAt?.(p.x, p.y);
   if ([1, 2, 3, "boss"].includes(region) && !state.visited.includes(region)) {
     if (
-      ui.say("", time, 2.5, {
+      ui.say("", time, B.guidance.regionDuration, {
         title: region === "boss" ? "守門室" : world.regions[region].name,
         kind: "region",
       }) !== false
@@ -146,7 +155,13 @@ export function updateGuidance(s, { world, p, walls, boss, time, handheld }, ui)
   }
   const wall = nearestCrack(p, walls);
   if (walls.some((w) => w.broken)) learn(s, "breach");
-  if (!boss.active && !p.slimeForm && wall && wallDistance(p, wall) <= 120 && p.energy >= 30) {
+  if (
+    !boss.active &&
+    !p.slimeForm &&
+    wall &&
+    wallDistance(p, wall) <= B.guidance.wallRange &&
+    p.energy >= B.energy.breachCost
+  ) {
     const critical = wall.id === "duct-intro";
     if (
       tutorial(
@@ -155,7 +170,7 @@ export function updateGuidance(s, { world, p, walls, boss, time, handheld }, ui)
         "breach",
         (critical ? "能量已足夠，" : "") + breachPrompt(p, wall, handheld),
         time,
-        4,
+        B.guidance.duration,
         { critical },
       )
     )
@@ -163,9 +178,9 @@ export function updateGuidance(s, { world, p, walls, boss, time, handheld }, ui)
   }
 }
 export function drawCrackGuidance(g, p, walls, time, reduced) {
-  if (p.energy < 30 || p.slimeForm) return;
+  if (p.energy < B.energy.breachCost || p.slimeForm) return;
   for (const w of walls) {
-    if (w.broken || w.ordinary || wallDistance(p, w) > 120) continue;
+    if (w.broken || w.ordinary || wallDistance(p, w) > B.guidance.wallRange) continue;
     g.save();
     g.strokeStyle = "#ffd391";
     g.lineWidth = reduced ? 3 : 3 + Math.sin(time * 4) * 0.8;

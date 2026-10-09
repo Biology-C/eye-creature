@@ -1,5 +1,6 @@
+import { BALANCE as B } from "./config/balance.mjs";
 import { MAX_HP } from "./health.mjs";
-export const WING_REFILL = 0.28;
+export const WING_REFILL = B.energy.wingRefill;
 export function createRewards(world) {
   if (world.rewardSpec) return structuredClone(world.rewardSpec);
   const { graph, position } = world;
@@ -98,11 +99,11 @@ export function collectReward(reward, player, maxWing, time) {
     player.wing = Math.min(maxWing, player.wing + WING_REFILL);
     reward.restored = player.wing - before;
     // Absorption uses the shard's nominal 40%, independent of remaining flight stamina.
-    const total = (player.healCharge || 0) + 40,
-      cycles = Math.floor(total / 100),
+    const total = (player.healCharge || 0) + B.energy.healChargePerWing,
+      cycles = Math.floor(total / B.energy.healThreshold),
       hp = player.hp ?? MAX_HP;
-    player.healCharge = total % 100;
-    player.hp = Math.min(MAX_HP, hp + cycles * 0.5);
+    player.healCharge = total % B.energy.healThreshold;
+    player.hp = Math.min(MAX_HP, hp + cycles * B.energy.healAmount);
     reward.healed = player.hp - hp;
     reward.healCycles = cycles;
   }

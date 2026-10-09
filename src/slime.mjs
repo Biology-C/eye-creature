@@ -1,7 +1,8 @@
-export const SLIME_JUMP = -250 * Math.SQRT2,
-  SLIME_RUN = 34 * 1.25,
-  SLIME_AIR = 165 * 1.25;
-export function createPureSlimes(world, seed = 928, count = 20) {
+import { BALANCE as B } from "./config/balance.mjs";
+export const SLIME_JUMP = B.enemy.slimeJump,
+  SLIME_RUN = B.enemy.slimeSpeed,
+  SLIME_AIR = B.enemy.slimeAirSpeed;
+export function createPureSlimes(world, seed = 928, count = B.legacy.slimes) {
   if (world.pureSpawns) return structuredClone(world.pureSpawns);
   let s = seed >>> 0;
   const random = () => {
@@ -41,15 +42,15 @@ export function createPureSlimes(world, seed = 928, count = 20) {
 export const isSlime = (r) => r.pure || r.big || (r.hp > 0 && r.hp <= 1);
 export function createBigSlimes(world) {
   if (world.bigSpawns) return structuredClone(world.bigSpawns);
-  return createPureSlimes(world, 928, 25)
-    .slice(20)
+  return createPureSlimes(world, 928, B.legacy.bigCandidates)
+    .slice(B.legacy.bigOffset)
     .map((r) => ({ ...r, y: r.y - 8, big: true, bodyRadius: 22, radiusX: 22, radiusY: 22 }));
 }
 export function splitSlime(r, free) {
   if (!r.big || r.hp > 0 || r.split) return [];
   r.split = true;
   const children = [];
-  for (const [i, offset] of [-18, -6, 6, 18].entries()) {
+  for (const [i, offset] of B.enemy.splitOffsets.entries()) {
     let x = r.x + offset,
       y = r.y - 8;
     if (!free(x, y, 14)) {
@@ -65,13 +66,13 @@ export function splitSlime(r, free) {
       a: r.a,
       b: r.b,
       face: i % 2 ? 1 : -1,
-      hp: 1,
+      hp: B.enemy.slimeHp,
       pure: true,
       child: true,
       state: "jump",
       timer: 0,
       stun: 0,
-      vy: -180,
+      vy: B.enemy.splitJump,
       surface: null,
     });
   }
@@ -82,13 +83,13 @@ function detach(r) {
   r.grounded = false;
   r.vy = 0;
   r.state = "rest";
-  r.timer = 0.4;
+  r.timer = B.enemy.detachRest;
 }
 export function crawlSlime(r, physics, dt, time) {
   if (!isSlime(r)) return false;
   const radius = r.bodyRadius || 14,
     probe = radius + 2,
-    speed = SLIME_RUN * (r.big ? 0.75 : 1);
+    speed = B.enemy.slimeSpeed * (r.big ? B.enemy.bigSpeedScale : 1);
   const solid = physics.solid;
   if (r.surface) {
     const supported =

@@ -1,3 +1,4 @@
+import { BALANCE as B } from "./config/balance.mjs";
 import {
   installRegionFeatures,
   gustAt,
@@ -138,6 +139,8 @@ new ResizeObserver(() => {
   cameraSnap = true;
 }).observe(canvas.parentElement);
 const legacy = new URLSearchParams(location.search).has("legacy");
+const debugEnabled = new URLSearchParams(location.search).get("debug") === "1";
+let debug = null;
 const world = legacy ? buildMaze() : buildAdventure();
 let exploration = createExploration(world);
 const cues = createCues();
@@ -361,7 +364,7 @@ function reset() {
     spawn: r.x,
     y0: r.y,
     face: i % 2 ? -1 : 1,
-    hp: r.big ? 3 : r.pure ? 1 : 2,
+    hp: r.big ? B.enemy.bigHp : r.pure ? B.enemy.slimeHp : B.enemy.ratHp,
     surface: null,
     state: "walk",
     timer: 0,
@@ -400,7 +403,7 @@ function phoneText(message) {
         .replaceAll("按 Q 映出鏡像", "靠近場景鏡面映出鏡像")
         .replaceAll("用 Q 或左側鏡子破解", "靠近左側鏡子破解");
 }
-function say(message, duration = 4) {
+function say(message, duration = B.guidance.duration) {
   guidance.say(phoneText(message), time, duration);
   noticeUntil = guidance.until;
 }
@@ -470,7 +473,7 @@ function newAdventure() {
   if (!legacy && saveInfo.status !== "empty" && !confirm("開始新冒險會覆蓋休息燈存檔。確定嗎？"))
     return;
   try {
-    if (!legacy) localStorage.removeItem(SAVE_KEY);
+    if (!legacy && !debugEnabled) localStorage.removeItem(SAVE_KEY);
   } catch {
     say("無法清除舊存檔；本次遊戲仍可繼續。");
   }
@@ -571,7 +574,7 @@ function breach() {
     return;
   }
   if (!performBreach(wall))
-    say(`還需要 ${BREACH_COST - player.energy} 橘色能量（${player.energy}/30）。`, 3);
+    say(`還需要 ${BREACH_COST - player.energy} 橘色能量（${player.energy}/${BREACH_COST}）。`, 3);
 }
 $("#breach").onclick = breach;
 function mirror() {
@@ -767,9 +770,9 @@ function clearPath(ax, ay, bx, by) {
   }
   return true;
 }
-function impact(e, damage = 1) {
+function impact(e, damage = B.enemy.contactDamage) {
   magic.effects.push({ x: e.x, y: e.y, kind: "melee", damage, until: time + 0.24 });
-  hitStop = Math.max(hitStop, 0.045);
+  hitStop = Math.max(hitStop, B.attack.hitStop);
 }
 function enemyDamageSound(e, before) {
   if (e === boss) markBossHit(boss, before, time);
@@ -800,10 +803,10 @@ function applyMelee() {
       continue;
     }
     impact(e);
-    hitStop = Math.max(hitStop, slash.stage === 3 ? 0.08 : slash.stage === 2 ? 0.06 : 0.045);
+    hitStop = Math.max(hitStop, B.attack.meleeHitStops[(slash.stage || 1) - 1]);
     if (e === boss) {
-      boss.hp = Math.max(0, boss.hp - 1);
-      boss.stun = time + 0.15;
+      boss.hp = Math.max(0, boss.hp - B.attack.meleeDamage[(slash.stage || 1) - 1]);
+      boss.stun = time + B.attack.bossMeleeStun;
       if (!boss.hp) {
         kills++;
         boss.cursed = false;
@@ -815,10 +818,10 @@ function applyMelee() {
   kills += hit.killed;
   syncStumps(world.platforms, fauna.trees);
   for (const r of rats.filter((e) => targets.includes(e))) {
-    r.hp = Math.max(0, r.hp - 1);
+    r.hp = Math.max(0, r.hp - B.attack.meleeDamage[(slash.stage || 1) - 1]);
     r.state = "rest";
-    r.timer = 0.7;
-    r.stun = time + 0.6;
+    r.timer = B.attack.enemyHitRest;
+    r.stun = time + B.attack.enemyStun;
     if (!r.hp) kills++;
   }
   for (const [e, hp] of hpBefore) enemyDamageSound(e, hp);
@@ -829,8 +832,8 @@ function attack(stage = 1) {
     return;
   }
   learn(exploration, "rat");
-  nextAttack = time + 0.32;
-  attackUntil = time + 0.3;
+  nextAttack = time + B.attack.meleeCooldown;
+  attackUntil = time + B.attack.meleeDuration;
   slash = { x: player.x, y: player.y, face: player.face, stage };
   struck.clear();
   applyMelee();
@@ -847,7 +850,7 @@ function nearEnemy() {
 }
 function nextCombo() {
   comboStage = time <= comboUntil ? (comboStage % 3) + 1 : 1;
-  comboUntil = time + 0.85;
+  comboUntil = time + B.attack.comboWindow;
   attack(comboStage);
 }
 function pressAttack(touch = false) {
@@ -858,7 +861,7 @@ function pressAttack(touch = false) {
     return;
   }
   if (touch && handheld && !nearEnemy() && wallTarget(true) && player.energy < BREACH_COST)
-    say(`還需要 ${BREACH_COST - player.energy} 橘色能量（${player.energy}/30）。`, 3);
+    say(`還需要 ${BREACH_COST - player.energy} 橘色能量（${player.energy}/${BREACH_COST}）。`, 3);
   if (
     touch &&
     handheld &&
@@ -878,7 +881,7 @@ function pressAttack(touch = false) {
   }
   if (nearEnemy() || (comboStage && time <= comboUntil)) {
     if (time >= nextAttack) nextCombo();
-    else comboQueue = Math.min(2, comboQueue + 1);
+    else comboQueue = Math.min(B.attack.comboBuffer, comboQueue + 1);
   }
   // Charging is an input action, not a shot: it can start during cooldown.
   // castLight still enforces the firing cooldown when the key is released.
@@ -899,8 +902,8 @@ function syncChargeSound() {
     player &&
     !player.slimeForm &&
     chargeStart !== null &&
-    time - chargeStart >= 0.12;
-  if (on) sfx.startCharge(time - chargeStart, 0.8);
+    time - chargeStart >= B.attack.chargeSoundDelay;
+  if (on) sfx.startCharge(time - chargeStart, B.attack.chargeTime);
   else sfx.stopCharge();
 }
 function releaseAttack() {
@@ -911,11 +914,12 @@ function releaseAttack() {
     const quick = breachHold && !breachConsumed;
     breachHold = null;
     breachConsumed = false;
-    if (quick && mode === "playing" && fireLight(false)) nextAttack = time + 0.5;
+    if (quick && mode === "playing" && fireLight(false)) nextAttack = time + B.attack.lightCooldown;
     return;
   }
   if (mode === "playing" && chargeStart !== null) {
-    if (fireLight(time - chargeStart >= 0.8)) nextAttack = time + 0.5;
+    if (fireLight(time - chargeStart >= B.attack.chargeTime))
+      nextAttack = time + B.attack.lightCooldown;
   }
   chargeStart = null;
 }
@@ -926,7 +930,7 @@ function autoAttack() {
     return;
   }
   if (nearEnemy()) attack();
-  else if (fireLight(false)) nextAttack = time + 0.5;
+  else if (fireLight(false)) nextAttack = time + B.attack.lightCooldown;
 }
 function syncForm() {
   if (!setSlimeForm(player, boss.active && boss.hp > 0 && boss.cursed)) return;
@@ -956,7 +960,7 @@ function updateFormControls() {
 function slimeAttack() {
   if (startSlimeAttack(player)) {
     slimeHits.clear();
-    nextAttack = time + 0.55;
+    nextAttack = time + B.player.slimeAttackCooldown;
   }
 }
 function applySlimeHit() {
@@ -973,12 +977,12 @@ function applySlimeHit() {
     slimeHits.add(e);
     impact(e);
     const beforeHp = e.hp;
-    e.hp = Math.max(0, e.hp - 1);
+    e.hp = Math.max(0, e.hp - B.attack.slimeDamage);
     enemyDamageSound(e, beforeHp);
-    e.stun = time + 0.6;
+    e.stun = time + B.attack.enemyStun;
     if (e !== boss) {
       e.state = "rest";
-      e.timer = 0.7;
+      e.timer = B.attack.enemyHitRest;
     }
     if (!e.hp) kills++;
   }
@@ -993,7 +997,8 @@ function finishBoss() {
   syncForm();
 }
 // eslint-disable-next-line no-unused-vars -- Existing damage-source call signature retained; quiet HUD no longer displays this label.
-function hurt(source = "老鼠", damage = 1) {
+function hurt(source = "老鼠", damage = B.enemy.contactDamage) {
+  if (debug?.invincible) return;
   if (time < player.inv) return;
   const beforeHp = player.hp;
   if (breachHold) {
@@ -1005,7 +1010,7 @@ function hurt(source = "老鼠", damage = 1) {
   magic.effects.push({ x: player.x, y: player.y, kind: "hurt", damage, until: time + 0.24 });
   player.hp = Math.max(0, player.hp - damage);
   if (player.hp < beforeHp) sfx.play(player.hp === 0 ? "death" : "hurt");
-  player.inv = time + 1.5;
+  player.inv = time + B.player.invulnerability;
   updateHud();
   if (player.hp <= 0) {
     clearTouch();
@@ -1027,7 +1032,7 @@ function hurt(source = "老鼠", damage = 1) {
     player.dashCooldown = 0;
     player.wing = MAX_WING;
     player.grounded = false;
-    player.inv = time + 2;
+    player.inv = time + B.player.respawnInvulnerability;
     attackUntil = 0;
     slash = null;
     for (const r of rats)
@@ -1071,8 +1076,11 @@ function beginBoss() {
   if (hpBefore < MAX_HP) {
     exploration.guidance ??= { visited: [] };
     if (!exploration.guidance.visited.includes("boss")) exploration.guidance.visited.push("boss");
-    guidance.say("守門室前：生命已回滿", time, 4, { kind: "region", title: "守門室" });
-    exploration.quietUntil = time + 4;
+    guidance.say("守門室前：生命已回滿", time, B.guidance.duration, {
+      kind: "region",
+      title: "守門室",
+    });
+    exploration.quietUntil = time + B.guidance.duration;
   } else
     say(
       `紅熊 ${boss.maxHp} HP：避開吐息瞄準線，跳過重踏震波。變身後等重踏掉落鏡子，再拾取恢復！`,
@@ -1080,7 +1088,7 @@ function beginBoss() {
     );
 }
 function teach(id, condition, message) {
-  if (condition) tutorial(exploration, guidance, id, phoneText(message), time, 4);
+  if (condition) tutorial(exploration, guidance, id, phoneText(message), time, B.guidance.duration);
 }
 function runTutorials() {
   exploration.teaching = [];
@@ -1126,7 +1134,7 @@ function runTutorials() {
           Math.hypot(r.x - player.x, r.y - player.y) > 170 &&
           Math.hypot(r.x - player.x, r.y - player.y) < 330,
       ),
-    "遠處按住 Space 0.8 秒再放開：大型光彈。",
+    `遠處按住 Space ${B.attack.chargeTime} 秒再放開：大型光彈。`,
   );
   teach(
     "dash",
@@ -1163,6 +1171,10 @@ function captureCheckpoint() {
   };
 }
 function saveCheckpoint() {
+  if (debugEnabled) {
+    $("#save-status").textContent = "除錯模式不保存旅程；原存檔未變更。";
+    return;
+  }
   if (legacy) return;
   const state = captureCheckpoint();
   let result;
@@ -1182,6 +1194,11 @@ function saveCheckpoint() {
   }
 }
 function loadCheckpointMenu() {
+  if (debugEnabled) {
+    $("#continue").hidden = true;
+    $("#save-status").textContent = "除錯模式不讀寫旅程存檔。";
+    return;
+  }
   if (legacy) return;
   try {
     saveInfo = readSave(localStorage, world.version, world.seed);
@@ -1203,7 +1220,11 @@ function restoreCheckpoint(s) {
     kills = s.kills;
     deaths = s.deaths;
     checkpoint = { ...s.checkpoint };
-    Object.assign(player, s.player, { x: checkpoint.x, y: checkpoint.y, inv: time + 2 });
+    Object.assign(player, s.player, {
+      x: checkpoint.x,
+      y: checkpoint.y,
+      inv: time + B.player.respawnInvulnerability,
+    });
     rats = structuredClone(s.rats);
     for (const r of rats) {
       r.x = r.spawn;
@@ -1301,12 +1322,12 @@ function update(dt) {
       dashHits.add(e);
       impact(e);
       const beforeHp = e.hp;
-      e.hp = Math.max(0, e.hp - 1);
+      e.hp = Math.max(0, e.hp - B.attack.dashDamage);
       enemyDamageSound(e, beforeHp);
-      e.stun = time + 0.6;
+      e.stun = time + B.attack.enemyStun;
       if (rats.includes(e)) {
         e.state = "rest";
-        e.timer = 0.7;
+        e.timer = B.attack.enemyHitRest;
       }
       if (!e.hp) kills++;
     }
@@ -1315,8 +1336,10 @@ function update(dt) {
     comboQueue--;
     nextCombo();
   }
-  if (slash && slash.stage === 3 && time < attackUntil - 0.1) {
-    const speed = keys.has(slash.face > 0 ? "right" : "left") ? 360 : 180;
+  if (slash && slash.stage === 3 && time < attackUntil - B.attack.activeEnd) {
+    const speed = keys.has(slash.face > 0 ? "right" : "left")
+      ? B.attack.crossFullSpeed
+      : B.attack.crossHalfSpeed;
     const steps = Math.max(1, Math.ceil((speed * dt) / 6));
     for (let i = 0; i < steps; i++) {
       move(player, (slash.face * speed * dt) / steps, 0);
@@ -1325,7 +1348,7 @@ function update(dt) {
       applyMelee();
     }
   }
-  if (slash && time < attackUntil - 0.1) applyMelee();
+  if (slash && time < attackUntil - B.attack.activeEnd) applyMelee();
   updateMagic(magic, dt, time, {
     solid,
     targets: [
@@ -1335,16 +1358,16 @@ function update(dt) {
       ...(boss.active ? [boss] : []),
       ...fauna.trees.map((t) => ({ ...t, radiusX: 27, radiusY: 35, tree: true })),
     ],
-    hit: (e, damage = 1) => {
+    hit: (e, damage = B.enemy.contactDamage) => {
       if (e.tree) return; // Tree bark blocks light; only melee can fell trees.
       impact(e, damage);
       const beforeHp = e.hp;
       e.hp = Math.max(0, e.hp - damage);
       enemyDamageSound(e, beforeHp);
-      e.stun = time + 0.6;
+      e.stun = time + B.attack.enemyStun;
       if (rats.includes(e)) {
         e.state = "rest";
-        e.timer = 0.7;
+        e.timer = B.attack.enemyHitRest;
         if (e.hp < 2 && !e.pure && !e.big) learn(exploration, "rat");
       }
       if (!e.hp) kills++;
@@ -1353,14 +1376,14 @@ function update(dt) {
   $("#magic").textContent =
     chargeStart === null
       ? "光彈 · F 切換"
-      : time - chargeStart >= 0.8
+      : time - chargeStart >= B.attack.chargeTime
         ? "蓄力完成 · 放開發射"
-        : `蓄力 ${Math.min(100, Math.floor(((time - chargeStart) / 0.8) * 100))}%`;
+        : `蓄力 ${Math.min(100, Math.floor(((time - chargeStart) / B.attack.chargeTime) * 100))}%`;
   for (const r of [...rats]) {
     const children = splitSlime(r, free);
     for (const child of children) {
       if (r.bossMinion) child.bossMinion = true;
-      child.stun = time + 0.6;
+      child.stun = time + B.attack.enemyStun;
       struck.add(child);
       dashHits.add(child);
       for (const shot of magic.shots) shot.hitTargets?.add(child);
@@ -1376,7 +1399,7 @@ function update(dt) {
       Math.abs(player.x - r.x) < (r.bodyRadius || 14) + 13 &&
       Math.abs(player.y - r.y) < (r.bodyRadius || 14) + 10
     )
-      hurt(r.big ? "紫色大史萊姆" : "老鼠", r.big ? 2 : 1);
+      hurt(r.big ? "紫色大史萊姆" : "老鼠", r.big ? B.enemy.bigDamage : B.enemy.contactDamage);
   }
   if (handheld) {
     $("#dash").innerHTML = player.slimeForm
@@ -1438,9 +1461,9 @@ function update(dt) {
         kinds,
         rats.filter((r) => r.bossMinion && r.hp > 0).length,
       );
-      for (const r of minions) r.stun = time + 1;
+      for (const r of minions) r.stun = time + B.boss.summonGrace;
       rats.push(...minions);
-      say(`紅熊剩餘 ${[75, 50, 20][i]}% 生命：召喚援軍！`, 3);
+      say(`紅熊剩餘 ${B.boss.waves[i].ratio * 100}% 生命：召喚援軍！`, 3);
     },
     curse: () =>
       teach(
@@ -1611,7 +1634,7 @@ function update(dt) {
         : intent === "breach"
           ? "長按破牆"
           : chargeStart !== null
-            ? time - chargeStart >= 0.8
+            ? time - chargeStart >= B.attack.chargeTime
               ? "滿蓄力"
               : "蓄力"
             : "攻擊";
@@ -1692,7 +1715,13 @@ function render() {
         g.lineTo(w.x + ox, w.y + w.h - 4);
         g.stroke();
       }
-    text(w.axis === "vertical" ? "↑↓ 裂面 30" : "裂牆 · 30", w.x + 9, w.y + 48, "#ffe0b1", 12);
+    text(
+      w.axis === "vertical" ? `↑↓ 裂面 ${BREACH_COST}` : `裂牆 · ${BREACH_COST}`,
+      w.x + 9,
+      w.y + 48,
+      "#ffe0b1",
+      12,
+    );
   }
   // Wall fixtures remain visible while unlit; only actual nearby exploration ignites them.
   drawCrackGuidance(g, player, crackedWalls, time, reduced);
@@ -1795,10 +1824,10 @@ function render() {
     keys.has("down") ? "down" : keys.has("up") ? "up" : null,
   );
   if (ordinaryTarget) {
-    g.strokeStyle = player.energy >= 30 ? "#edc78f" : "#877365";
+    g.strokeStyle = player.energy >= BREACH_COST ? "#edc78f" : "#877365";
     g.lineWidth = 2;
     g.strokeRect(ordinaryTarget.x, ordinaryTarget.y, ordinaryTarget.w, ordinaryTarget.h);
-    text("破牆 30", ordinaryTarget.x, ordinaryTarget.y - 5, "#edc78f", 12);
+    text(`破牆 ${BREACH_COST}`, ordinaryTarget.x, ordinaryTarget.y - 5, "#edc78f", 12);
   }
   const ex = world.exit.x,
     ey = world.exit.y;
@@ -1987,7 +2016,7 @@ function render() {
       drawSlash(g, slash, 1 - (attackUntil - time) / 0.3, reduced, slashStyle);
   }
   if (chargeStart !== null) {
-    const q = Math.min(1, (time - chargeStart) / 0.8),
+    const q = Math.min(1, (time - chargeStart) / B.attack.chargeTime),
       cx = player.x + player.face * 24;
     g.save();
     g.strokeStyle = q >= 1 ? "#ffffff" : "#8edcff";
@@ -2068,9 +2097,9 @@ function render() {
   }
   if (chargeStart !== null)
     text(
-      time - chargeStart >= 0.8
+      time - chargeStart >= B.attack.chargeTime
         ? "放開發射"
-        : `蓄力 ${Math.min(100, Math.floor(((time - chargeStart) / 0.8) * 100))}%`,
+        : `蓄力 ${Math.min(100, Math.floor(((time - chargeStart) / B.attack.chargeTime) * 100))}%`,
       px - 32,
       py - 40,
       "#bdefff",
@@ -2107,6 +2136,7 @@ function drawJourneyMap() {
   ctx.fillRect(px - 1, py - 5, 3, 11);
 }
 function loop(now) {
+  debug?.frame(now);
   const dt = Math.min(0.05, last ? (now - last) / 1000 : 0);
   last = now;
   if (mode === "playing") {
@@ -2193,6 +2223,25 @@ try {
   reset();
   mode = "intro";
   loadCheckpointMenu();
+  if (debugEnabled) {
+    const { createDebugPanel } = await import("./debug.mjs");
+    debug = createDebugPanel({
+      state: () => ({ player, boss, rats, fauna }),
+      refresh: updateHud,
+      clearInput: () => {
+        clearTouch();
+        keys.clear();
+        cancelAttackInput();
+      },
+      jumpToBoss: () => {
+        if (mode === "reading") return false;
+        lights.forEach((light) => (light.got = true));
+        beginBoss();
+        resume();
+        return true;
+      },
+    });
+  }
   $("#start").disabled = false;
   $("#start").textContent = "開始新冒險";
   requestAnimationFrame(loop);

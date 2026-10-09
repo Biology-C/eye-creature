@@ -1,3 +1,4 @@
+import { BALANCE as B } from "./config/balance.mjs";
 export function createExploration(world) {
   return {
     gaze: null,
@@ -25,7 +26,7 @@ export function updateGaze(s, p, keys, walls, dt, solid) {
     })
     .filter(
       (t) =>
-        t.d <= 160 &&
+        t.d <= B.guidance.gazeRange &&
         t.dx * dir[0] + t.dy * dir[1] > 0 &&
         Math.abs(t.dx * dir[1] - t.dy * dir[0]) <= 70,
     )
@@ -50,7 +51,7 @@ export function updateGaze(s, p, keys, walls, dt, solid) {
     s.elapsed = 0;
   }
   s.elapsed += dt;
-  if (s.elapsed + 1e-8 >= 0.6) {
+  if (s.elapsed + 1e-8 >= B.guidance.gazeDuration) {
     t.w.discovered = true;
     s.gaze = null;
     s.elapsed = 0;
@@ -83,7 +84,7 @@ export function collectEchoes(s, p, time, fighting) {
       e = s.echoes.find((e) => e.id === id);
     if (!e) return null;
     s.echoText = e.text;
-    s.echoUntil = time + 3;
+    s.echoUntil = time + B.guidance.echoDuration;
     return e;
   }
   return null;

@@ -1,5 +1,6 @@
+import { BALANCE as B } from "./config/balance.mjs";
 // Phone-only presentation and input helpers. Desktop simulation remains shared.
-export const BREACH_HOLD = 0.65;
+export const BREACH_HOLD = B.guidance.breachHold;
 export function attackIntent({ melee, combo, wall, energy, cost }) {
   return melee || combo ? "melee" : wall && energy >= cost ? "breach" : "magic";
 }

@@ -1,10 +1,11 @@
+import { BALANCE as B } from "./config/balance.mjs";
 import { stepGust } from "./region-features.mjs";
-export const RUN_SPEED = 260,
-  MAX_WING = 0.7;
+export const RUN_SPEED = B.player.runSpeed,
+  MAX_WING = B.player.maxWing;
 export function startDash(o) {
   if ((o.dashCooldown || 0) > 0 || (o.dashRemaining || 0) > 0) return false;
-  o.dashRemaining = 0.18;
-  o.dashCooldown = o.abilities?.dash ? 0.6 : 1.2;
+  o.dashRemaining = B.player.dashDuration;
+  o.dashCooldown = o.abilities?.dash ? B.player.relicDashCooldown : B.player.dashCooldown;
   o.dashFace = o.face || 1;
   return true;
 }
@@ -59,7 +60,7 @@ export function createPhysics(map, T, platforms, blocked = () => false) {
       o.dashCooldown = Math.max(0, (o.dashCooldown || 0) - step);
       if ((o.dashRemaining || 0) > 0) {
         const burst = Math.min(step, o.dashRemaining);
-        horizontal(o, o.dashFace * 650 * burst, 11);
+        horizontal(o, o.dashFace * B.player.dashSpeed * burst, 11);
         o.dashRemaining = Math.max(0, o.dashRemaining - step);
         o.vy = 0;
         o.flapping = false;
@@ -68,20 +69,23 @@ export function createPhysics(map, T, platforms, blocked = () => false) {
       }
       const up = keys.has("up"),
         down = keys.has("down");
-      if (o.grounded) o.wing = Math.min(MAX_WING, o.wing + step * 1.4);
-      o.flapping = up && !down && o.wing > 0 && (!o.grounded || o.wing >= 0.35);
+      if (o.grounded) o.wing = Math.min(MAX_WING, o.wing + step * B.player.wingRefill);
+      o.flapping = up && !down && o.wing > 0 && (!o.grounded || o.wing >= B.player.takeoffWing);
       o.gliding = up && !down && !o.flapping && !o.grounded;
       if (inWind && !down) {
-        o.vy = Math.max(-220, o.vy - 650 * step);
+        o.vy = Math.max(-B.wind.upSpeed, o.vy - B.wind.upAcceleration * step);
         o.flapping = false;
         o.gliding = true;
         o.grounded = false;
       } else if (o.flapping) {
         o.wing = Math.max(0, o.wing - step);
-        o.vy = -260;
+        o.vy = B.player.flapVelocity;
         o.grounded = false;
       } else
-        o.vy = Math.min(down ? 480 : o.gliding ? 65 : 360, o.vy + (o.gliding ? 200 : 850) * step);
+        o.vy = Math.min(
+          down ? B.player.dropSpeed : o.gliding ? B.player.glideSpeed : B.player.fallSpeed,
+          o.vy + (o.gliding ? B.player.glideGravity : B.player.gravity) * step,
+        );
       horizontal(
         o,
         (Number(keys.has("right")) - Number(keys.has("left"))) * RUN_SPEED * step +
@@ -92,7 +96,7 @@ export function createPhysics(map, T, platforms, blocked = () => false) {
     }
   }
   function enemy(o, dt) {
-    o.vy = Math.min(400, (o.vy || 0) + 850 * dt);
+    o.vy = Math.min(B.enemy.fallSpeed, (o.vy || 0) + B.enemy.gravity * dt);
     fall(o, o.vy * dt, o.bodyRadius || 14, false);
   }
   function walkEnemy(o, dx) {

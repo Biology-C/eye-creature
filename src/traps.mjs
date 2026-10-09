@@ -1,13 +1,24 @@
+import { BALANCE as B } from "./config/balance.mjs";
 // Game-time seconds only: pause/blur also freezes the hazard cycle.
 export function spikeState(time) {
-  const phase = ((time % 6) + 6) % 6;
-  const active = phase >= 3;
+  const period = B.spikes.retracted + B.spikes.extended;
+  const phase = ((time % period) + period) % period;
+  const active = phase >= B.spikes.retracted;
   return {
     phase,
     active,
-    warning: phase >= 2.2 && !active,
-    height: active ? Math.round(37.5 * Math.min(1, (phase - 3) / 0.2, (6 - phase) / 0.2)) : 0,
-    remaining: Math.ceil(active ? 6 - phase : 3 - phase),
+    warning: phase >= B.spikes.retracted - B.spikes.warning && !active,
+    height: active
+      ? Math.round(
+          B.spikes.height *
+            Math.min(
+              1,
+              (phase - B.spikes.retracted) / B.spikes.transition,
+              (period - phase) / B.spikes.transition,
+            ),
+        )
+      : 0,
+    remaining: Math.ceil(active ? period - phase : B.spikes.retracted - phase),
   };
 }
 export function touchesSpikes(player, trap, time) {
@@ -32,7 +43,7 @@ export function addSurfaceSpikes(world) {
         w: t.w,
         node: t.node,
         angle: Math.PI,
-        offset: i % 2 ? 3 : 0,
+        offset: i % 2 ? B.spikes.retracted : 0,
       });
     for (const side of [-1, 1]) {
       const yy = p.y + (side < 0 ? 1 : 3),
@@ -45,7 +56,7 @@ export function addSurfaceSpikes(world) {
           w: 2 * T,
           node: t.node,
           angle: side < 0 ? Math.PI / 2 : -Math.PI / 2,
-          offset: i % 2 ? 0 : 3,
+          offset: i % 2 ? 0 : B.spikes.retracted,
         });
     }
   }

@@ -1,3 +1,4 @@
+import { BALANCE as B } from "./config/balance.mjs";
 import { drawPickupIcon } from "./pickup-art.mjs";
 export function relicMessage(reward, handheld) {
   const info = {
@@ -7,7 +8,7 @@ export function relicMessage(reward, handheld) {
     ],
     dash: ["衝刺可傷害敵人，冷卻時間減半。", handheld ? "X：衝刺" : "Shift：衝刺"],
     breach: [
-      "破牆技能也能打破一般牆面，每次消耗30能量。",
+      `破牆技能也能打破一般牆面，每次消耗${B.energy.breachCost}能量。`,
       handheld
         ? "面向牆面，長按 A；十字鍵上下可選擇地板／天花板"
         : "E：破牆；↑／↓ 搭配 E 選擇天花板／地板",
@@ -35,7 +36,7 @@ export function createMessageCard({ handheld, onClose, clock = () => performance
   const held = new Set(),
     pointers = new Set();
   function close() {
-    if (layer.hidden || clock() - openedAt < 600) return false;
+    if (layer.hidden || clock() - openedAt < B.guidance.cardGuard * 1000) return false;
     layer.hidden = true;
     clearTimeout(timer);
     onClose();
@@ -106,7 +107,7 @@ export function createMessageCard({ handheld, onClose, clock = () => performance
           (find("close").textContent = handheld
             ? "按 A 或點擊卡片繼續"
             : "按 Space、Enter 或點擊卡片繼續"),
-        600,
+        B.guidance.cardGuard * 1000,
       );
       const g = card.querySelector("canvas").getContext("2d");
       g.clearRect(0, 0, 120, 120);

@@ -1,3 +1,4 @@
+import { BALANCE as B } from "./config/balance.mjs";
 // Authored spine with deterministic optional branches. Coordinates are 32px tiles.
 export const LEVEL_VERSION = "adventure-5";
 export function buildAdventure(seed = 2917) {
@@ -295,10 +296,10 @@ export function buildAdventure(seed = 2917) {
       }
     return out;
   }
-  const ratNodes = [node(6, 10), ...select(11)],
-    pure = select(10, 2),
-    big = select(3, 4),
-    treeNodes = select(3, 6);
+  const ratNodes = [node(6, 10), ...select(B.candidates.extraRats)],
+    pure = select(B.candidates.slimes, 2),
+    big = select(B.candidates.bigSlimes, 4),
+    treeNodes = select(B.population.trees, 6);
   // Retain stable spawn IDs and main-route encounters before optional duplicates.
   const retain = (list, count) =>
     list
@@ -316,11 +317,11 @@ export function buildAdventure(seed = 2917) {
       radiusX: 22,
       radiusY: 22,
     }));
-  rats.splice(0, rats.length, ...retain(rats, 8));
-  pureSpawns.splice(0, pureSpawns.length, ...retain(pureSpawns, 7));
-  bigSpawns.splice(0, bigSpawns.length, ...retain(bigSpawns, 2));
+  rats.splice(0, rats.length, ...retain(rats, B.population.rats));
+  pureSpawns.splice(0, pureSpawns.length, ...retain(pureSpawns, B.population.slimes));
+  bigSpawns.splice(0, bigSpawns.length, ...retain(bigSpawns, B.population.bigSlimes));
   const faunaSpec = {
-    birdRules: { interval: 3, cap: 4, regional: true },
+    birdRules: { interval: B.enemy.birdInterval, cap: B.enemy.birdCap, regional: true },
     trees: treeNodes.map(floorPoint),
     birds: [
       ...treeNodes,
@@ -329,7 +330,7 @@ export function buildAdventure(seed = 2917) {
   };
   // Scene mirrors are landmarks, independent of the reduced initial bird population.
   faunaSpec.mirrorSpawns = faunaSpec.birds.map((b) => ({ ...b }));
-  faunaSpec.birds = faunaSpec.birds.slice(0, 4);
+  faunaSpec.birds = faunaSpec.birds.slice(0, B.population.birds);
   const trapNodes = eligible
       .filter((n) => !ratNodes.includes(n) && !treeNodes.includes(n))
       .filter((_, i) => i > 0 && i % 4 === 0)
@@ -343,15 +344,20 @@ export function buildAdventure(seed = 2917) {
   const rewards = [];
   const energy = (id, x, y, amount = 1) =>
     rewards.push({ id, x, y, kind: "energy", amount, got: false, node: 0 });
-  for (let i = 0; i < 30; i++)
+  for (let i = 0; i < B.energy.introSingles; i++)
     energy("intro-energy-" + i, start.x + 90 + i * 34, (tile(node(1, 10)).y + 5) * T - 26);
   // Three forgiving pickups on the same safe floor, before the first crack.
-  for (const [i, dx] of [260, 600, 900].entries())
-    energy("intro-reserve-" + i, start.x + dx, (tile(node(1, 10)).y + 5) * T - 26, 4);
+  for (const [i, dx] of B.energy.introReserveOffsets.entries())
+    energy(
+      "intro-reserve-" + i,
+      start.x + dx,
+      (tile(node(1, 10)).y + 5) * T - 26,
+      B.energy.introReserveAmount,
+    );
   for (const [i, n] of main.entries())
     if (i > 7 && i % 4 === 0) {
       const p = floorPoint(n);
-      energy("energy-" + n, p.x, p.y - 8, 5);
+      energy("energy-" + n, p.x, p.y - 8, B.energy.routeAmount);
     }
   for (const [i, n] of main.entries())
     if (i > 6 && i % 5 === 0) {
@@ -379,7 +385,7 @@ export function buildAdventure(seed = 2917) {
     .filter((r) => r.kind === "energy" && !r.id.startsWith("intro-"))
     .slice(8);
   const relicSites = rewards.filter((r) => r.kind === "relic");
-  for (let i = 0; i < 28; i++) {
+  for (let i = 0; i < B.energy.bonusCount; i++) {
     let x, y;
     if (i < 14) {
       const p = energySites[Math.floor((i * energySites.length) / 14)];
@@ -392,7 +398,12 @@ export function buildAdventure(seed = 2917) {
       x = p.x - 48 + (j % 4) * 32;
       y = p.y + 24 + Math.floor(j / 4) * 28;
     }
-    energy("bonus-energy-" + i, x, y, i < 10 ? 3 : 2);
+    energy(
+      "bonus-energy-" + i,
+      x,
+      y,
+      i < B.energy.bonusHighCount ? B.energy.bonusHighAmount : B.energy.bonusAmount,
+    );
   }
   const echoes = branches
     .filter((b) => b.kind === "echo")

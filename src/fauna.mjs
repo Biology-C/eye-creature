@@ -1,3 +1,4 @@
+import { BALANCE as B } from "./config/balance.mjs";
 import { updateTornadoes } from "./tornado.mjs";
 import { inMelee } from "./combat.mjs";
 export function createFauna(world) {
@@ -6,11 +7,11 @@ export function createFauna(world) {
       ...t,
       id,
       y: t.y - 21,
-      hp: 5,
+      hp: B.enemy.treeHp,
       state: "idle",
       timer: 0,
       stun: 0,
-      castTimer: 2,
+      castTimer: B.enemy.treeFirstCast,
       casting: 0,
     }));
     const zones = world.faunaSpec.birds.map((b, id) => ({ ...b, id, elapsed: 0, serial: 0 }));
@@ -50,17 +51,17 @@ export function createFauna(world) {
       node,
       x: (p.x + 2.5) * T,
       y: (p.y + 5) * T - 35,
-      hp: 5,
+      hp: B.enemy.treeHp,
       state: "idle",
       timer: 0,
       stun: 0,
-      castTimer: 2,
+      castTimer: B.enemy.treeFirstCast,
       casting: 0,
     };
   });
   const zones = trees.map((t, id) => ({ id, x: t.x, y: t.y - 55, elapsed: 0, serial: 0 }));
   for (const node of candidates.filter((n) => !nodes.includes(n))) {
-    if (zones.length >= 20) break;
+    if (zones.length >= B.legacy.birds) break;
     const p = world.position(node);
     zones.push({ id: zones.length, x: p.x, y: p.y, elapsed: 0, serial: 0 });
   }
@@ -75,7 +76,7 @@ function spawnBird(state, z) {
       (b) =>
         b.hp &&
         (state.birdRules?.regional ? state.zones[b.zone].region === z.region : b.zone === z.id),
-    ).length >= (state.birdRules?.cap ?? 6)
+    ).length >= (state.birdRules?.cap ?? B.legacy.birdCap)
   )
     return false;
   state.birds.push({
@@ -83,9 +84,9 @@ function spawnBird(state, z) {
     zone: z.id,
     x: z.x,
     y: z.y,
-    hp: 1,
+    hp: B.enemy.birdHp,
     mode: "circle",
-    timer: 1.2,
+    timer: B.enemy.birdCircleDuration,
     angle: z.serial * 1.6,
     dx: 0,
     dy: 0,
@@ -99,8 +100,8 @@ export function meleeFauna(s, p, time, clear, targets = null) {
     // eslint-disable-next-line no-unused-vars -- Legacy binding retained for the no-behavior-change tooling pass; review in a separate cleanup.
     const dx = (e.x - p.x) * p.face;
     if ((!targets || targets.includes(e)) && inMelee(p, e, clear)) {
-      e.hp = Math.max(0, e.hp - 1);
-      e.stun = time + 0.6;
+      e.hp = Math.max(0, e.hp - B.attack.meleeDamage[(p.stage || 1) - 1]);
+      e.stun = time + B.attack.enemyStun;
       if (!e.hp) {
         killed++;
         if ("node" in e) {
@@ -116,13 +117,17 @@ export function meleeFauna(s, p, time, clear, targets = null) {
 }
 export function mirrorFauna(s, p, time, clear) {
   if (time < s.mirrorReady) return -1;
-  s.mirrorReady = time + 6;
-  s.mirrorUntil = time + 0.7;
+  s.mirrorReady = time + B.attack.mirrorCooldown;
+  s.mirrorUntil = time + B.attack.mirrorDuration;
   let count = 0;
   for (const b of s.birds)
-    if (b.hp && Math.hypot(b.x - p.x, b.y - p.y) <= 180 && clear(p.x, p.y, b.x, b.y)) {
+    if (
+      b.hp &&
+      Math.hypot(b.x - p.x, b.y - p.y) <= B.attack.mirrorRange &&
+      clear(p.x, p.y, b.x, b.y)
+    ) {
       b.mode = "mirror";
-      b.timer = 0.65;
+      b.timer = B.attack.mirrorDefeatDelay;
       count++;
     }
   return count;
@@ -135,14 +140,14 @@ export function resetFaunaAfterDeath(s) {
       b.x = z.x;
       b.y = z.y;
       b.mode = "circle";
-      b.timer = 1.2;
+      b.timer = B.enemy.birdCircleDuration;
       b.stun = 0;
     }
   for (const t of s.trees) {
     t.state = "idle";
     t.timer = 0;
     t.stun = 0;
-    t.castTimer = 2;
+    t.castTimer = B.enemy.treeFirstCast;
     t.casting = 0;
   }
 }
@@ -151,7 +156,7 @@ export function updateFauna(s, p, time, dt, { clear, free, hurt, visible, region
   s.tornadoes = updateTornadoes(s.tornadoes || [], dt, { free, player: p, hurt });
   for (const t of s.trees) {
     if (!t.hp || time < t.stun) continue;
-    const near = Math.hypot(t.x - p.x, t.y - p.y) < 300 && clear(t.x, t.y, p.x, p.y);
+    const near = Math.hypot(t.x - p.x, t.y - p.y) < B.enemy.treeSight && clear(t.x, t.y, p.x, p.y);
     if (!near) {
       t.casting = 0;
       continue;
@@ -166,13 +171,13 @@ export function updateFauna(s, p, time, dt, { clear, free, hurt, visible, region
           dx: (p.x - t.x) / len,
           dy: (p.y - t.y) / len,
           bounces: 0,
-          life: 7,
+          life: B.enemy.tornadoLife,
         });
-        t.castTimer = 3.5;
+        t.castTimer = B.enemy.treeCastCooldown;
       }
     } else {
-      t.castTimer = (t.castTimer ?? 2) - dt;
-      if (t.castTimer <= 0) t.casting = 0.8;
+      t.castTimer = (t.castTimer ?? B.enemy.treeFirstCast) - dt;
+      if (t.castTimer <= 0) t.casting = B.enemy.treeCastWarning;
     }
   }
   // In exploration each thematic region shares ONE timer and population cap.
@@ -182,7 +187,7 @@ export function updateFauna(s, p, time, dt, { clear, free, hurt, visible, region
         (b) =>
           b.hp &&
           b.zone === z.id &&
-          (visible ? visible(b) : Math.hypot(p.x - b.x, p.y - b.y) < 320) &&
+          (visible ? visible(b) : Math.hypot(p.x - b.x, p.y - b.y) < B.enemy.birdVisibleRange) &&
           clear(p.x, p.y, b.x, b.y),
       )
     )
@@ -195,8 +200,8 @@ export function updateFauna(s, p, time, dt, { clear, free, hurt, visible, region
     const members = s.birdRules?.regional ? s.zones.filter((v) => v.region === z.region) : [z],
       ids = new Set(members.map((v) => v.id)),
       birds = s.birds.filter((b) => b.hp && ids.has(b.zone)),
-      interval = s.birdRules?.interval ?? 1.5,
-      cap = s.birdRules?.cap ?? 6;
+      interval = s.birdRules?.interval ?? B.legacy.birdInterval,
+      cap = s.birdRules?.cap ?? B.legacy.birdCap;
     if (
       members.some((v) => v.seen) &&
       birds.length &&
@@ -212,23 +217,24 @@ export function updateFauna(s, p, time, dt, { clear, free, hurt, visible, region
   }
   for (const t of s.trees) {
     if (!t.hp || time < t.stun) continue;
-    const near = Math.hypot(t.x - p.x, t.y - p.y) < 95 && clear(t.x, t.y, p.x, p.y);
+    const near =
+      Math.hypot(t.x - p.x, t.y - p.y) < B.enemy.treeMeleeRange && clear(t.x, t.y, p.x, p.y);
     if (t.state === "idle" && near) {
       t.state = "ready";
-      t.timer = 0.8;
+      t.timer = B.enemy.treeReady;
     } else if (t.state !== "idle") {
       t.timer -= dt;
       if (t.timer <= 0) {
         if (t.state === "ready") {
           t.state = "strike";
-          t.timer = 0.25;
+          t.timer = B.enemy.treeStrike;
         } else if (t.state === "strike") {
           t.state = "rest";
-          t.timer = 1.3;
+          t.timer = B.enemy.treeRest;
         } else t.state = "idle";
       }
     }
-    if (t.state === "strike" && near) hurt("樹妖");
+    if (t.state === "strike" && near) hurt("樹妖", B.enemy.contactDamage);
   }
   for (const b of s.birds) {
     if (!b.hp) continue;
@@ -242,21 +248,21 @@ export function updateFauna(s, p, time, dt, { clear, free, hurt, visible, region
       continue;
     }
     if (time < (b.stun || 0)) continue;
-    const near = Math.hypot(p.x - b.x, p.y - b.y) < 220 && clear(b.x, b.y, p.x, p.y);
+    const near = Math.hypot(p.x - b.x, p.y - b.y) < B.enemy.birdSight && clear(b.x, b.y, p.x, p.y);
     if (b.mode === "circle" && near) {
       b.mode = "ready";
-      b.timer = 0.7;
+      b.timer = B.enemy.birdReady;
     }
     let tx = z.x + Math.cos(b.angle) * 38,
       ty = z.y + Math.sin(b.angle) * 22,
-      speed = 45;
+      speed = B.enemy.birdSpeed;
     b.angle += dt * 1.8;
     if (b.mode === "ready") {
       b.timer -= dt;
       speed = 0;
       if (b.timer <= 0) {
         b.mode = "dash";
-        b.timer = 0.55;
+        b.timer = B.enemy.birdDashDuration;
         const len = Math.hypot(p.x - b.x, p.y - b.y) || 1;
         b.dx = (p.x - b.x) / len;
         b.dy = (p.y - b.y) / len;
@@ -264,11 +270,11 @@ export function updateFauna(s, p, time, dt, { clear, free, hurt, visible, region
     } else if (b.mode === "dash") {
       tx = b.x + b.dx * 100;
       ty = b.y + b.dy * 100;
-      speed = 145;
+      speed = B.enemy.birdDashSpeed;
       b.timer -= dt;
       if (b.timer <= 0) {
         b.mode = "rest";
-        b.timer = 1;
+        b.timer = B.enemy.birdRest;
       }
     } else if (b.mode === "rest") {
       b.timer -= dt;
@@ -282,7 +288,8 @@ export function updateFauna(s, p, time, dt, { clear, free, hurt, visible, region
       if (free(b.x + dx, b.y, 10)) b.x += dx;
       if (free(b.x, b.y + dy, 10)) b.y += dy;
     }
-    if (Math.hypot(b.x - p.x, b.y - p.y) < 24 && clear(b.x, b.y, p.x, p.y)) hurt("青影鳥");
+    if (Math.hypot(b.x - p.x, b.y - p.y) < 24 && clear(b.x, b.y, p.x, p.y))
+      hurt("青影鳥", B.enemy.contactDamage);
   }
   return kills;
 }

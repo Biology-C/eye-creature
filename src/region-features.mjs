@@ -1,3 +1,4 @@
+import { BALANCE as B } from "./config/balance.mjs";
 // Authored fixtures use existing terrain; they never carve or alter collision.
 export function installRegionFeatures(world) {
   if (!world.version) return;
@@ -22,7 +23,7 @@ export function installRegionFeatures(world) {
       y,
       w: 64,
       angle: left ? Math.PI / 2 : -Math.PI / 2,
-      offset: i * 3,
+      offset: i * B.spikes.retracted,
       waiting: { x: (p.x + 2.5) * 32, y: (p.y + 1) * 32 - 11.01 },
     });
   }
@@ -40,8 +41,9 @@ export function installRegionFeatures(world) {
   });
 }
 export function gustState(time) {
-  const phase = ((time % 7) + 7) % 7;
-  return { active: phase < 5, warning: phase >= 6.5, phase };
+  const period = B.wind.blow + B.wind.rest;
+  const phase = ((time % period) + period) % period;
+  return { active: phase < B.wind.blow, warning: phase >= period - B.wind.warning, phase };
 }
 export function gustAt(world, p, time) {
   return gustState(time).active
@@ -52,12 +54,19 @@ export function gustAt(world, p, time) {
 }
 export function stepGust(p, direction, dt) {
   p.gustDrift = direction
-    ? Math.max(-150, Math.min(150, (p.gustDrift || 0) + direction * 650 * dt))
+    ? Math.max(
+        -B.wind.speed,
+        Math.min(B.wind.speed, (p.gustDrift || 0) + direction * B.wind.acceleration * dt),
+      )
     : 0;
   return p.gustDrift * dt;
 }
 export function updateGustWarnings(world, time, previous, camera, viewport, play) {
-  if (!gustState(time).warning || Math.floor((previous + 0.5) / 7) === Math.floor((time + 0.5) / 7))
+  if (
+    !gustState(time).warning ||
+    Math.floor((previous + B.wind.warning) / (B.wind.blow + B.wind.rest)) ===
+      Math.floor((time + B.wind.warning) / (B.wind.blow + B.wind.rest))
+  )
     return;
   if (
     (world.gusts || []).some(

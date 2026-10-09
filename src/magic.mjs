@@ -1,3 +1,4 @@
+import { BALANCE as B } from "./config/balance.mjs";
 export function createMagic() {
   return { shots: [], effects: [], ready: 0 };
 }
@@ -5,15 +6,15 @@ export function castLight(s, p, time, charged = false) {
   if (time < s.ready) return false;
   // Lift the 12px charged orb above the grounded 11px player radius.
   const originY = p.y - (charged ? 4 : 0);
-  s.ready = time + 0.5;
+  s.ready = time + B.attack.lightCooldown;
   const hitTargets = new Set();
-  for (const angle of !charged && p.abilities?.spread ? [-0.24, 0, 0.24] : [0])
+  for (const angle of !charged && p.abilities?.spread ? B.attack.spreadAngles : [0])
     s.shots.push({
       x: p.x,
       y: originY,
       face: p.face,
-      damage: charged ? 3 : 1,
-      radius: charged ? 12 : 4,
+      damage: charged ? B.attack.chargedDamage : B.attack.lightDamage,
+      radius: charged ? B.attack.chargedRadius : B.attack.lightRadius,
       charged,
       hitTargets,
       dx: p.face * Math.cos(angle),
@@ -26,7 +27,7 @@ export function castLight(s, p, time, charged = false) {
 export function updateMagic(s, dt, time, { solid, targets, hit }) {
   s.effects = s.effects.filter((e) => e.until > time);
   s.shots = s.shots.filter((b) => {
-    const distance = Math.min(620 * dt, 320 - b.travel),
+    const distance = Math.min(B.attack.lightSpeed * dt, B.attack.lightRange - b.travel),
       steps = Math.max(1, Math.ceil(distance / 3));
     for (let i = 0; i < steps; i++) {
       b.x += ((b.dx ?? b.face) * distance) / steps;
@@ -46,13 +47,13 @@ export function updateMagic(s, dt, time, { solid, targets, hit }) {
       if (wall || target) {
         if (target && !b.hitTargets?.has(target)) {
           b.hitTargets?.add(target);
-          hit(target, b.damage || 1);
+          hit(target, b.damage || B.attack.lightDamage);
         }
         s.effects.push({ x: b.x, y: b.y, kind: "hit", until: time + 0.24 });
         return false;
       }
     }
-    return b.travel < 320;
+    return b.travel < B.attack.lightRange;
   });
 }
 // Chunky screen-space pixels keep the effects consistent with the character artwork.

@@ -1,13 +1,14 @@
+import { BALANCE as B } from "./config/balance.mjs";
 import { MAX_HP } from "./health.mjs";
 import { drawPickupIcon } from "./pickup-art.mjs";
-export const RECOVERY_COOLDOWN = 20;
+export const RECOVERY_COOLDOWN = B.recovery.cooldown;
 // The stomp reaches 126px; leave a further 120px to the pickup center.
 export function dropRecovery(b, p, time) {
   if (
     !b.active ||
     b.hp <= 0 ||
     p.hp <= 0 ||
-    p.hp > 2 ||
+    p.hp > B.recovery.hpThreshold ||
     b.recovery ||
     time - b.lastRecoveryAt <= RECOVERY_COOLDOWN
   )
@@ -15,8 +16,8 @@ export function dropRecovery(b, p, time) {
   const a = b.arena,
     candidates = [];
   for (let x = a.left + 14; x <= a.exit.x - 18 - 14; x += 1) {
-    if (Math.abs(x - b.x) < 126 + 120) continue;
-    if (b.cursed && b.mirrors.some((m) => Math.abs(x - m.x) < 120)) continue;
+    if (Math.abs(x - b.x) < B.boss.stompReach + B.recovery.separation) continue;
+    if (b.cursed && b.mirrors.some((m) => Math.abs(x - m.x) < B.recovery.separation)) continue;
     candidates.push(x);
   }
   candidates.sort((x, y) => Math.abs(y - b.x) - Math.abs(x - b.x) || x - y);
@@ -30,10 +31,10 @@ export function collectRecovery(b, p) {
     !b.active ||
     b.hp <= 0 ||
     !b.recovery ||
-    Math.hypot(p.x - b.recovery.x, p.y - b.recovery.y) > 28
+    Math.hypot(p.x - b.recovery.x, p.y - b.recovery.y) > B.recovery.pickupRange
   )
     return false;
-  p.hp = Math.min(MAX_HP, p.hp + 1);
+  p.hp = Math.min(MAX_HP, p.hp + B.recovery.amount);
   b.recovery = null;
   return true;
 }

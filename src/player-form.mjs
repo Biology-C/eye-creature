@@ -1,4 +1,4 @@
-import { SLIME_JUMP, SLIME_RUN, SLIME_AIR } from "./slime.mjs";
+import { BALANCE as B } from "./config/balance.mjs";
 
 export function setSlimeForm(p, enabled) {
   if (Boolean(p.slimeForm) === enabled) return false;
@@ -17,10 +17,10 @@ export function setSlimeForm(p, enabled) {
 export function startSlimeAttack(p) {
   if (!p.slimeForm || p.slimeCooldown > 0) return false;
   p.surface = null;
-  p.slimeAttack = 0.3;
-  p.slimeCooldown = 0.55;
+  p.slimeAttack = B.player.slimeAttackDuration;
+  p.slimeCooldown = B.player.slimeAttackCooldown;
   p.slimeFace = p.face;
-  p.vy = -240;
+  p.vy = B.player.slimeAttackVelocity;
   p.grounded = false;
   return true;
 }
@@ -49,23 +49,23 @@ export function updateSlimePlayer(p, keys, dt, physics) {
       } else {
         p.vy = 0;
         p.grounded = false;
-        if (p.surface === "ceiling") physics.moveEnemy(p, dx * SLIME_RUN * step);
+        if (p.surface === "ceiling") physics.moveEnemy(p, dx * B.enemy.slimeSpeed * step);
         else {
-          if (up) physics.moveSurfaceY(p, -SLIME_RUN * step);
+          if (up) physics.moveSurfaceY(p, -B.enemy.slimeSpeed * step);
           if (physics.solid(p.x, p.y - 13)) p.surface = "ceiling";
         }
         continue;
       }
     }
     if (p.slimeAttack > 0) {
-      physics.moveEnemy(p, p.slimeFace * SLIME_AIR * step);
+      physics.moveEnemy(p, p.slimeFace * B.enemy.slimeAirSpeed * step);
       p.slimeAttack = Math.max(0, p.slimeAttack - step);
     } else {
       if (up && !down && p.grounded) {
-        p.vy = SLIME_JUMP;
+        p.vy = B.enemy.slimeJump;
         p.grounded = false;
       }
-      physics.moveEnemy(p, dx * (p.grounded ? SLIME_RUN : SLIME_AIR) * step);
+      physics.moveEnemy(p, dx * (p.grounded ? B.enemy.slimeSpeed : B.enemy.slimeAirSpeed) * step);
     }
     if (up && !down && p.slimeAttack <= 0) {
       if (dx && physics.solid(p.x + dx * 13, p.y)) {
