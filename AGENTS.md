@@ -33,6 +33,7 @@ Linux CI 安裝瀏覽器時使用 `npx playwright install --with-deps chromium`�
 
 ## 程式規則
 
+- 新增、改名或刪除 src 檔案時，必須同步更新 docs/ARCHITECTURE.md 的模組地圖。
 - 單檔不超過 400 行；新功能放在職責單一、能獨立測試的模組。
 - 禁止把多個敘述寫在同一行；以 `npm run format` 統一排版（printWidth 100）。
 - 不把玩法數值散落寫死：使用所屬模組的命名常數或既有設定，例如 boss.maxHp。

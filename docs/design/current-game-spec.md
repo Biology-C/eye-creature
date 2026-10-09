@@ -26,7 +26,7 @@
 | 移動與翼能 | 水平移動 260px/s；翼能上限 0.7 | physics.mjs |
 | 光彈 | 普通傷害 1，滿蓄力傷害 3；蓄力 0.8 秒，普通冷卻 0.5 秒 | magic.mjs、game.js |
 | 三向藏品 | 僅普通光彈分三向，不分裂滿蓄力彈 | magic.mjs |
-| 近戰 | 直斬 → 迴旋斬 → 位移十字斬；高階可清低階障礙 | game.js、combat.mjs、exploration.mjs |
+| 近戰 | 直斬 → 迴旋斬 → 位移十字斬；高階可清低階障礙 | game.js、hit-geometry.mjs、exploration.mjs |
 | 破牆 | 消耗 30；普通石牆需能力藏品，四向判定受保護區限制 | breach.mjs、handheld.mjs |
 | 初始敵人 | 8 老鼠、7 純史萊姆、2 紫色大史萊姆、3 樹妖、4 青影鳥 | adventure.mjs |
 | 青影鳥 | 看見後啟動，每區 3 秒增殖一次，同時上限 4；離區暫停、清空停止 | fauna.mjs |

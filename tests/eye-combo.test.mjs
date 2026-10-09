@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { inMelee } from "../src/combat.mjs";
+import { inMelee } from "../src/hit-geometry.mjs";
 import { castLight, createMagic, updateMagic } from "../src/magic.mjs";
 for (const face of [-1, 1]) {
   const p = { x: 0, y: 0, face },

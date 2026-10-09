@@ -21,7 +21,7 @@ scripts/build-pages.cjs 將原版放根目錄、探索版放 preview/，共用 v
 | boss.mjs | 管理紅熊房、攻擊狀態、援軍門檻、鏡子、出口門與魔王繪製。 |
 | breach.mjs | 選取四方向可破牆、檢查資源及保護範圍並套用地形破壞。 |
 | combat-sounds.mjs | 將實際受傷結果轉為音效，處理命中去重與死亡音優先順序。 |
-| combat.mjs | 提供近戰範圍、身體尺寸及牆面阻隔的共用命中判定。 |
+| hit-geometry.mjs | 提供近戰範圍、身體尺寸及牆面阻隔的共用命中判定。 |
 | config/balance.mjs | 集中玩家、戰鬥、敵人、魔王、資源、陷阱與教學的可調參數及唯讀預設快照。 |
 | systems/combat.mjs | 唯一角色 HP 寫入與傷害入口；處理無敵、死亡、老鼠血量形態及延後分裂，另提供回血與還原入口。 |
 | core/events.mjs | 每個遊戲實例的同步 on/off/emit 匯流排；依註冊順序完成回饋，不延後事件。 |
@@ -151,7 +151,7 @@ eye-damage-entry.test.mjs 禁止其他模組直接寫 actor.hp；環境障礙 o.
 | 手機介面與按鍵 | handheld.mjs、index.html、styles/handheld.css | core/input.mjs、eye-handheld-browser.test.cjs |
 | 區域裝置、尖刺與裝飾 | region-features.mjs、traps.mjs、terrain.mjs | exploration-art.mjs、eye-region-features.test.mjs |
 | 開路、風道與凝視 | breach.mjs、exploration.mjs、adventure.mjs | eye-vertical-breach.test.mjs、eye-adventure-browser.test.cjs |
-| 攻擊手感與光彈 | combat.mjs、magic.mjs、systems/melee.mjs、systems/player-actions.mjs | eye-combo.test.mjs、eye-charge-ground-browser.test.cjs |
+| 攻擊手感與光彈 | hit-geometry.mjs、magic.mjs、systems/melee.mjs、systems/player-actions.mjs | eye-combo.test.mjs、eye-charge-ground-browser.test.cjs |
 | 鏡頭舒適度 | systems/camera.mjs | eye-camera-browser.test.cjs |
 | 調整平衡數值 | config/balance.mjs | eye-replay.test.cjs、eye-balance-config.test.mjs；刻意改行為時才更新 golden |
 | 除錯測試工具 | debug.mjs | core/assets.mjs 的隔離介面、eye-debug-browser.test.cjs |

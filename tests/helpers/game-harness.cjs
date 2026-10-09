@@ -71,7 +71,7 @@ import {
   bossSummons,
   BOSS_ATTACK_LABELS,
 } from "./boss.mjs";
-import { inMelee } from "./combat.mjs";
+import { inMelee } from "./hit-geometry.mjs";
 import {
   createMagic,
   castLight,

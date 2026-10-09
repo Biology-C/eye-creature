@@ -1,7 +1,7 @@
 import { BALANCE as B } from "../config/balance.mjs";
 import { learn } from "../guidance.mjs";
 import { hitObstacle, syncStumps } from "../exploration.mjs";
-import { inMelee } from "../combat.mjs";
+import { inMelee } from "../hit-geometry.mjs";
 import { meleeFauna } from "../fauna.mjs";
 export function installMelee(app) {
   function impact(e, damage = B.enemy.contactDamage) {

@@ -1,7 +1,7 @@
 import { damageEnemy } from "./systems/combat.mjs";
 import { BALANCE as B } from "./config/balance.mjs";
 import { updateTornadoes } from "./tornado.mjs";
-import { inMelee } from "./combat.mjs";
+import { inMelee } from "./hit-geometry.mjs";
 export function createFauna(world) {
   if (world.faunaSpec) {
     const trees = world.faunaSpec.trees.map((t, id) => ({
