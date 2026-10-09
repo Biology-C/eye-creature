@@ -1,3 +1,5 @@
+import { createEvents } from "./core/events.mjs";
+import { subscribeFeedback } from "./ui/event-feedback.mjs";
 import { createState, resetState } from "./core/state.mjs";
 import { BALANCE as B } from "./config/balance.mjs";
 import {
@@ -6,7 +8,7 @@ import {
   updateGustWarnings,
   drawRegionFeatures,
 } from "./region-features.mjs";
-import { createHealingFeedback, markBossHit, wingFrame, createBossPainter } from "./feedback.mjs";
+import { createHealingFeedback, wingFrame, createBossPainter } from "./feedback.mjs";
 import {
   createGuidance,
   updateGuidance,
@@ -28,7 +30,7 @@ import {
   readAudioLevel,
   saveAudioLevel,
 } from "./audio-settings.mjs";
-import { createMusic, musicScene, MUSIC_VOLUME, MUSIC_LEVELS } from "./music.mjs";
+import { createMusic, MUSIC_VOLUME, MUSIC_LEVELS } from "./music.mjs";
 import {
   BREACH_HOLD,
   attackIntent,
@@ -162,6 +164,7 @@ const gameState = createState({
   reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
   lastSfxVolume: SFX_DEFAULT,
 });
+const events = createEvents();
 const physics = createPhysics(
   map,
   T,
@@ -242,15 +245,9 @@ const music = createMusic({
     button.setAttribute("aria-pressed", String(state.unlocked && !state.muted));
   },
 });
+subscribeFeedback(events, { gameState, sfx, cues, music, combatSounds, healingFeedback, paintHud });
 function syncMusic() {
-  music.setState(
-    musicScene(gameState.mode, gameState.boss),
-    gameState.musicInBackground ||
-      document.hidden ||
-      gameState.mode === "paused" ||
-      gameState.mode === "reading" ||
-      gameState.mode === "loading",
-  );
+  events.emit("musicChanged");
 }
 $("#music").onclick = () => {
   const state = music.snapshot();
@@ -271,8 +268,8 @@ $("#music-volume").onchange = () => {
 music.setVolume(readAudioLevel(MUSIC_KEY, MUSIC_LEVELS, MUSIC_VOLUME));
 
 function cancelAttackInput(preserveHit = false) {
-  sfx.stopCharge();
-  if (!preserveHit) combatSounds.clear();
+  events.emit("chargeStopped");
+  if (!preserveHit) events.emit("combatFeedbackCleared");
   gameState.breachHold = null;
   gameState.breachConsumed = false;
   gameState.attackHeld = false;
@@ -287,7 +284,7 @@ function reset() {
   gameState.noticeUntil = 0;
   messageCard.clear();
   gameState.importantMessages = [];
-  music.clearDuck();
+  events.emit("musicReset");
   gameState.clearTouch();
   gameState.exploration = createExploration(world);
   gameState.cameraSnap = true;
@@ -349,7 +346,7 @@ function reset() {
   gameState.seen.clear();
   gameState.keys.clear();
   gameState.slimeHits.clear();
-  healingFeedback.reset(gameState.player.hp);
+  events.emit("healthFeedbackReset");
   updateHud();
   updateFormControls();
 }
@@ -371,7 +368,9 @@ function say(message, duration = B.guidance.duration) {
   gameState.noticeUntil = guidance.until;
 }
 function updateHud() {
-  healingFeedback.observe(gameState.player.hp, gameState.time);
+  events.emit("hudChanged");
+}
+function paintHud() {
   $("#abilities").textContent =
     "能力：" +
     (["spread", "dash", "breach"]
@@ -463,7 +462,7 @@ $("#start").onclick = () => {
     beginBoss();
   }
   resume();
-  cues.play("start");
+  events.emit("adventureStarted");
 };
 $("#restart").onclick = newAdventure;
 $("#pause").onclick = pause;
@@ -539,7 +538,7 @@ function performBreach(wall) {
   wall.discovered = true;
   wall.changedAt = gameState.time;
   syncWinds(gameState.exploration, gameState.crackedWalls);
-  if (!sfx.play("breakWall")) cues.play("break");
+  events.emit("wallBroken");
   updateHud();
   learn(gameState.exploration, "breach", "gaze", "energy-ready");
   return true;
@@ -569,7 +568,7 @@ function mirror() {
   const count = mirrorFauna(gameState.fauna, gameState.player, gameState.time, clearPath);
   if (count > 0) {
     learn(gameState.exploration, "bird");
-    sfx.play("mirror");
+    events.emit("mirrorUsed");
   }
   if (count >= 0)
     say(
@@ -586,7 +585,7 @@ function dash() {
   if (startDash(gameState.player)) {
     learn(gameState.exploration, "dash");
     gameState.dashHits.clear();
-    sfx.play("dash");
+    events.emit("dashStarted");
   }
 }
 $("#dash").onclick = dash;
@@ -763,8 +762,9 @@ function impact(e, damage = B.enemy.contactDamage) {
   gameState.hitStop = Math.max(gameState.hitStop, B.attack.hitStop);
 }
 function enemyDamageSound(e, before) {
-  if (e === gameState.boss) markBossHit(gameState.boss, before, gameState.time);
-  combatSounds.damaged(e, before, {
+  events.emit(e.hp <= 0 ? "enemyDefeated" : "enemyHit", {
+    enemy: e,
+    before,
     boss: e === gameState.boss,
     crystalRat: gameState.rats.includes(e) && !e.pure && !e.big,
   });
@@ -786,7 +786,7 @@ function applyMelee() {
       if (hitObstacle(e, gameState.slash.stage)) {
         learn(gameState.exploration, "root");
         e.changedAt = gameState.time;
-        cues.play("break");
+        events.emit("obstacleBroken");
       }
       continue;
     }
@@ -836,7 +836,7 @@ function attack(stage = 1) {
   };
   gameState.struck.clear();
   applyMelee();
-  if (!gameState.player.slimeForm) sfx.play("slash" + stage);
+  if (!gameState.player.slimeForm) events.emit("meleeStarted", { stage });
 }
 function nearEnemy() {
   return [
@@ -885,7 +885,7 @@ function pressAttack(touch = false) {
     gameState.breachHold = { id: wallTarget(true).id, start: gameState.time };
     gameState.breachConsumed = false;
     gameState.chargeStart = null;
-    sfx.stopCharge();
+    events.emit("chargeStopped");
     return;
   }
   if (nearEnemy() || (gameState.comboStage && gameState.time <= gameState.comboUntil)) {
@@ -901,7 +901,7 @@ function fireLight(charged = false) {
   const fired = castLight(gameState.magic, gameState.player, gameState.time, charged);
   if (fired) {
     if (charged) learn(gameState.exploration, "charge");
-    sfx.play(charged ? "chargedShot" : "shot");
+    events.emit("lightFired", { charged });
   }
   return fired;
 }
@@ -912,11 +912,15 @@ function syncChargeSound() {
     !gameState.player.slimeForm &&
     gameState.chargeStart !== null &&
     gameState.time - gameState.chargeStart >= B.attack.chargeSoundDelay;
-  if (on) sfx.startCharge(gameState.time - gameState.chargeStart, B.attack.chargeTime);
-  else sfx.stopCharge();
+  if (on)
+    events.emit("chargeChanged", {
+      elapsed: gameState.time - gameState.chargeStart,
+      full: B.attack.chargeTime,
+    });
+  else events.emit("chargeStopped");
 }
 function releaseAttack() {
-  sfx.stopCharge();
+  events.emit("chargeStopped");
   if (!gameState.attackHeld) return;
   gameState.attackHeld = false;
   if (gameState.breachHold || gameState.breachConsumed) {
@@ -953,7 +957,7 @@ function syncForm() {
   gameState.clearTouch();
   gameState.keys.clear();
   cancelAttackInput(true);
-  if (gameState.player.slimeForm) sfx.play("curse");
+  if (gameState.player.slimeForm) events.emit("playerTransformed");
   gameState.attackUntil = 0;
   gameState.slash = null;
   gameState.magic.shots = [];
@@ -1038,7 +1042,8 @@ function hurt(source = "老鼠", damage = B.enemy.contactDamage) {
     until: gameState.time + 0.24,
   });
   gameState.player.hp = Math.max(0, gameState.player.hp - damage);
-  if (gameState.player.hp < beforeHp) sfx.play(gameState.player.hp === 0 ? "death" : "hurt");
+  if (gameState.player.hp < beforeHp)
+    events.emit("playerHurt", { dead: gameState.player.hp === 0 });
   gameState.player.inv = gameState.time + B.player.invulnerability;
   updateHud();
   if (gameState.player.hp <= 0) {
@@ -1240,7 +1245,7 @@ function saveCheckpoint() {
     gameState.saveInfo = { status: "ready", data: state };
     $("#save-status").textContent = "已保存至休息燈；關閉後可從這裡繼續。";
     guidance.saved(gameState.time);
-    cues.play("save");
+    events.emit("checkpointSaved");
   } else {
     say(result.message, 6);
     $("#save-status").textContent = result.message;
@@ -1320,7 +1325,7 @@ function restoreCheckpoint(s) {
     );
     gameState.cameraSnap = true;
     gameState.magic = createMagic();
-    healingFeedback.reset(gameState.player.hp);
+    events.emit("healthFeedbackReset");
     updateHud();
     return true;
   } catch {
@@ -1357,7 +1362,7 @@ function update(dt) {
       (p, elapsed) => gustAt(world, p, gameState.time - dt + elapsed),
     );
   updateGustWarnings(world, gameState.time, gameState.time - dt, gameState.camera, canvas, (kind) =>
-    cues.play(kind),
+    events.emit("gustWarning", kind),
   );
   applySlimeHit();
   if (gameState.breachHold) {
@@ -1514,7 +1519,7 @@ function update(dt) {
     ) {
       const count = mirrorFauna(gameState.fauna, m, gameState.time, clearPath);
       if (count > 0) {
-        sfx.play("mirror");
+        events.emit("mirrorUsed");
         learn(gameState.exploration, "bird");
       }
     }
@@ -1560,24 +1565,24 @@ function update(dt) {
       ),
     mirrorDrop: () => teach("mirror-drop", true, "重踏震落了鏡子！跳過震波，走近鏡子恢復。"),
     cured: () => {
-      sfx.play("mirror");
+      events.emit("mirrorUsed");
       learn(gameState.exploration, "curse", "mirror-drop");
     },
     recoveryDrop: () => teach("recovery", true, "大塊綠色能量出現！拾取可回復一格生命。"),
     recovered: () => {
       updateHud();
-      sfx.play("pickup", { kind: "relic" });
+      events.emit("pickup", { kind: "relic" });
       learn(gameState.exploration, "recovery");
     },
   });
-  if (summoned) sfx.play("bossSummon");
+  if (summoned) events.emit("bossPhase", { phase: "summon" });
   if (
     gameState.boss.active &&
     gameState.boss.hp > 0 &&
     bossState !== "ready" &&
     gameState.boss.state === "ready"
   )
-    sfx.play("bossWarn");
+    events.emit("bossPhase", { phase: "ready" });
   syncForm();
   $("#mirror").textContent =
     gameState.time >= gameState.fauna.mirrorReady
@@ -1614,7 +1619,7 @@ function update(dt) {
     if (!l.got && Math.hypot(gameState.player.x - l.x, gameState.player.y - l.y) < 30) {
       l.got = true;
       collectedOrb = true;
-      sfx.play("orb");
+      events.emit("orbCollected");
       updateHud();
       say(
         gameState.lights.every((p) => p.got)
@@ -1622,7 +1627,7 @@ function update(dt) {
           : "找到引路光點！繼續探索上下岔路。",
       );
     }
-  if (!collectedOrb) for (const opts of pickupSounds) sfx.play("pickup", opts);
+  if (!collectedOrb) for (const opts of pickupSounds) events.emit("pickup", opts);
   const lamp = world.safes.findIndex(
     (s) => Math.hypot(gameState.player.x - s.x, gameState.player.y - s.y) < 45,
   );
@@ -1650,8 +1655,7 @@ function update(dt) {
       42
   ) {
     gameState.mode = "won";
-    const played = sfx.play("levelClear");
-    if (played && !sfx.muted && sfx.volume > 0) music.duck(1500);
+    events.emit("levelCleared");
     gameState.clearTouch();
     gameState.keys.clear();
     cancelAttackInput();
@@ -1675,7 +1679,7 @@ function update(dt) {
   );
   if (found) {
     learn(gameState.exploration, "gaze");
-    cues.play("discover");
+    events.emit("discovered");
   }
   const fighting = [
     ...gameState.rats,
@@ -1690,7 +1694,7 @@ function update(dt) {
   );
   const echo = collectEchoes(gameState.exploration, gameState.player, gameState.time, fighting);
   if (echo) {
-    cues.play("discover");
+    events.emit("discovered");
     gameState.importantMessages.push({ kind: "echo", title: "勇者殘響", body: echo.text });
   }
   updateGuidance(
@@ -2363,7 +2367,7 @@ function loop(now) {
   }
   syncMusic();
   syncChargeSound();
-  combatSounds.flush();
+  events.emit("combatFeedbackFlush");
   if (gameState.player && gameState.ratImage) render();
   requestAnimationFrame(loop);
 }

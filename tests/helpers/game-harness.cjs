@@ -1,6 +1,7 @@
 // Test-only compatibility scope for pre-existing injected scenarios.
 // Production exposes only its read-only levelSnapshot, never these mutable getters.
 function instrumentGame(source) {
+  source = 'import { markBossHit } from "./feedback.mjs";\n' + source;
   return (
     source +
     `
