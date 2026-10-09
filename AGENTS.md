@@ -48,6 +48,11 @@ Linux CI 安裝瀏覽器時使用 `npx playwright install --with-deps chromium`�
 
 ## 分支與 commit
 
+- Golden replay 是行為契約：一般重構不得更新 tests/golden/*.json。
+  只有任務明確要求改變遊戲行為時才可執行 `npm run replay:update`，並審查每個狀態差異；
+  首次建立安全網允許從尚未重構的版本錄製初始基線。測試失敗不可用重錄掩蓋。
+  回放腳本與基線修改須另列在回報中，說明原始版本及理由。
+
 - 修改前確認分支與未提交內容，保留他人或前一任務的工作。
 - 不直接 push main、不 force push；發布需要使用者授權。
 - 探索版從 feature/first-adventure-rework 分支工作；本整理分支是 refactor/maintainability。

@@ -10,7 +10,8 @@
     "format:check": "prettier --check src tests scripts eslint.config.mjs .prettierrc.json",
     "lint": "eslint src tests scripts eslint.config.mjs",
     "test:unit": "node scripts/test.cjs unit",
-    "test:browser": "node scripts/test.cjs browser"
+    "test:browser": "node scripts/test.cjs browser",
+    "replay:update": "node scripts/replay-update.cjs"
   },
   "engines": {
     "node": ">=22.13.0"
