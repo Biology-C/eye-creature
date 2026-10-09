@@ -1,8 +1,26 @@
-const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=require('playwright');
-(async()=>{const browser=await chromium.launch(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{});try{
- for(const phone of [false,true]){
- const p=await browser.newPage({viewport:phone?{width:390,height:844}:{width:1280,height:720},isMobile:phone,hasTouch:phone}),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.addInitScript(()=>window.requestAnimationFrame=()=>1);
- await p.route('**/src/game.js',r=>r.fulfill({contentType:'application/javascript',body:fs.readFileSync('src/game.js','utf8')+`
+const fs = require("node:fs"),
+  assert = require("node:assert/strict"),
+  { chromium } = require("playwright");
+(async () => {
+  const browser = await chromium.launch(
+    process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {},
+  );
+  try {
+    for (const phone of [false, true]) {
+      const p = await browser.newPage({
+          viewport: phone ? { width: 390, height: 844 } : { width: 1280, height: 720 },
+          isMobile: phone,
+          hasTouch: phone,
+        }),
+        errors = [];
+      p.on("pageerror", (e) => errors.push(e.message));
+      await p.addInitScript(() => (window.requestAnimationFrame = () => 1));
+      await p.route("**/src/game.js", (r) =>
+        r.fulfill({
+          contentType: "application/javascript",
+          body:
+            fs.readFileSync("src/game.js", "utf8") +
+            `
  window.fx={
  prepare(hp=2){reset();resume();rats.forEach(r=>r.hp=0);fauna.birds.forEach(r=>r.hp=0);fauna.trees.forEach(r=>r.hp=0);rewards.forEach(r=>r.got=true);Object.assign(player,{x:world.start.x+100,hp,inv:1e9});updateHud();healingFeedback.reset(hp)},
  get event(){return healingFeedback.event},get hp(){return player.hp},get time(){return time},
@@ -17,20 +35,87 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
  gustPause(){this.region(0);time=6.6;const before=time,x=player.x;pause();loop(1000);loop(2000);const result={sameTime:time===before,sameX:player.x===x,phase:gustAt(world,player,time)};resume();return result},
  screenshot(){beginBoss();boss.cursed=true;syncForm();boss.hp--;enemyDamageSound(boss,boss.hp+1);render()},
  };
- `}));await p.goto((process.env.BASE_URL||'http://127.0.0.1:8768/')+(phone?'?handheld=1':''));await p.locator('#start:not([disabled])').waitFor();
- for(const [source,gain]of [['shard',.5],['lamp',3],['recovery',1],['boss',3]]){
-  await p.evaluate(source=>{fx.prepare();fx.heal(source)},source);assert.equal(await p.evaluate(()=>fx.hp),2+gain);assert.equal(await p.evaluate(()=>fx.event.amount),gain);
-  const flash=await p.locator('.hp-recovery').evaluateAll(es=>es.filter(e=>e.style.opacity==='1'&&parseFloat(e.style.width)>0).length);assert.ok(flash>0,source);
-  if(source==='boss')assert.ok((await p.locator('#notice').innerText()).includes('守門室前：生命已回滿'));
-  const animation=await p.evaluate(()=>[fx.particles(false),fx.particles(true)]);assert.ok(animation[0].particles>0);assert.deepEqual(animation[1],{particles:0,label:'+'+gain});
-  await p.evaluate(()=>fx.wait(.41));assert.ok(await p.locator('.hp-recovery').evaluateAll(es=>es.every(e=>e.style.opacity==='0')));
-  await p.evaluate(()=>fx.wait(.2));assert.deepEqual(await p.evaluate(()=>fx.particles(false)),{particles:0,label:''});
- }
- await p.evaluate(()=>{fx.prepare(5);fx.heal('boss')});assert.equal(await p.evaluate(()=>fx.event),null);assert.ok(!(await p.locator('#notice').innerText()).includes('生命已回滿'));
- assert.deepEqual(await p.evaluate(()=>fx.frames()),[0,1,2]);for(const disguised of [false,true]){const tint=await p.evaluate(c=>fx.tint(c),disguised);assert.ok(tint.sameAlpha&&tint.restored&&tint.linear&&tint.refresh&&tint.changed>100,JSON.stringify(tint));}
- await p.evaluate(()=>{fx.prepare();fx.screenshot()});await p.screenshot({path:'tests/artifacts/feedback-'+(phone?'phone':'desktop')+'.png'});assert.deepEqual(await p.evaluate(()=>fx.gustPause()),{sameTime:true,sameX:true,phase:0});
- if(!phone)for(let i=0;i<3;i++){await p.evaluate(i=>fx.region(i),i);await p.screenshot({path:'tests/artifacts/region-props-'+i+'.png'})}
- assert.deepEqual(errors,[]);await p.close();
- }
- console.log('PASS desktop/phone real healing events, full-HP silence, .6s particles/+N and .4s HP flash, reduced motion, animated wings, exact silhouette, linear 1s tint and re-hit reset');
-}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
+ `,
+        }),
+      );
+      await p.goto(
+        (process.env.BASE_URL || "http://127.0.0.1:8768/") + (phone ? "?handheld=1" : ""),
+      );
+      await p.locator("#start:not([disabled])").waitFor();
+      for (const [source, gain] of [
+        ["shard", 0.5],
+        ["lamp", 3],
+        ["recovery", 1],
+        ["boss", 3],
+      ]) {
+        await p.evaluate((source) => {
+          fx.prepare();
+          fx.heal(source);
+        }, source);
+        assert.equal(await p.evaluate(() => fx.hp), 2 + gain);
+        assert.equal(await p.evaluate(() => fx.event.amount), gain);
+        const flash = await p
+          .locator(".hp-recovery")
+          .evaluateAll(
+            (es) =>
+              es.filter((e) => e.style.opacity === "1" && parseFloat(e.style.width) > 0).length,
+          );
+        assert.ok(flash > 0, source);
+        if (source === "boss")
+          assert.ok((await p.locator("#notice").innerText()).includes("守門室前：生命已回滿"));
+        const animation = await p.evaluate(() => [fx.particles(false), fx.particles(true)]);
+        assert.ok(animation[0].particles > 0);
+        assert.deepEqual(animation[1], { particles: 0, label: "+" + gain });
+        await p.evaluate(() => fx.wait(0.41));
+        assert.ok(
+          await p
+            .locator(".hp-recovery")
+            .evaluateAll((es) => es.every((e) => e.style.opacity === "0")),
+        );
+        await p.evaluate(() => fx.wait(0.2));
+        assert.deepEqual(await p.evaluate(() => fx.particles(false)), { particles: 0, label: "" });
+      }
+      await p.evaluate(() => {
+        fx.prepare(5);
+        fx.heal("boss");
+      });
+      assert.equal(await p.evaluate(() => fx.event), null);
+      assert.ok(!(await p.locator("#notice").innerText()).includes("生命已回滿"));
+      assert.deepEqual(await p.evaluate(() => fx.frames()), [0, 1, 2]);
+      for (const disguised of [false, true]) {
+        const tint = await p.evaluate((c) => fx.tint(c), disguised);
+        assert.ok(
+          tint.sameAlpha && tint.restored && tint.linear && tint.refresh && tint.changed > 100,
+          JSON.stringify(tint),
+        );
+      }
+      await p.evaluate(() => {
+        fx.prepare();
+        fx.screenshot();
+      });
+      await p.screenshot({
+        path: "tests/artifacts/feedback-" + (phone ? "phone" : "desktop") + ".png",
+      });
+      assert.deepEqual(await p.evaluate(() => fx.gustPause()), {
+        sameTime: true,
+        sameX: true,
+        phase: 0,
+      });
+      if (!phone)
+        for (let i = 0; i < 3; i++) {
+          await p.evaluate((i) => fx.region(i), i);
+          await p.screenshot({ path: "tests/artifacts/region-props-" + i + ".png" });
+        }
+      assert.deepEqual(errors, []);
+      await p.close();
+    }
+    console.log(
+      "PASS desktop/phone real healing events, full-HP silence, .6s particles/+N and .4s HP flash, reduced motion, animated wings, exact silhouette, linear 1s tint and re-hit reset",
+    );
+  } finally {
+    await browser.close();
+  }
+})().catch((e) => {
+  console.error(e);
+  process.exitCode = 1;
+});
