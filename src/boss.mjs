@@ -1,5 +1,6 @@
 import {MAX_HP} from './health.mjs';
 import {dropRecovery,collectRecovery,drawRecovery} from './boss-recovery.mjs';
+export const BOSS_MAX_HP=36;
 export const BOSS_WAVES=[{ratio:.75,kinds:['rat','rat']},{ratio:.5,kinds:['slime','slime','slime']},{ratio:.2,kinds:['big']}];
 export function addBossArena(world){
  const top=world.H+2,T=world.T;
@@ -9,8 +10,8 @@ export function addBossArena(world){
  world.arena={left:64,right:768,top:top*T,floor:(top+9)*T,start:{x:144,y:(top+9)*T-12},exit:{x:720,y:(top+9)*T-12}};
  for(const x of [240,432,624])world.platforms.push({x,y:(top+6)*T,w:96});
 }
-function resetEncounter(b){Object.assign(b,{state:'rest',timer:1.5,cycle:0,cursed:false,stun:0,attack:null,waves:[],shots:[],mirrors:[],effects:[],serial:0,recovery:null,lastRecoveryAt:-Infinity})}
-export function createBoss(world){const a=world.arena,b={x:576,y:a.floor-38,hp:30,maxHp:30,radiusX:34,radiusY:38,active:false,face:-1,arena:a};resetEncounter(b);return b}
+function resetEncounter(b){Object.assign(b,{state:'rest',timer:1.5,cycle:0,cursed:false,stun:0,hitFlashAt:null,attack:null,waves:[],shots:[],mirrors:[],effects:[],serial:0,recovery:null,lastRecoveryAt:-Infinity})}
+export function createBoss(world){const a=world.arena,maxHp=BOSS_MAX_HP,b={x:576,y:a.floor-38,hp:maxHp,maxHp,radiusX:34,radiusY:38,active:false,face:-1,arena:a};resetEncounter(b);return b}
 export function enterBoss(b,p,a){resetEncounter(b);b.active=true;b.x=576;b.y=a.floor-38;Object.assign(p,{x:a.start.x,y:a.start.y,vy:0,wing:.7,hp:MAX_HP,dashRemaining:0})}
 export function resetBoss(b){b.active=false;resetEncounter(b);if(b.hp>0)b.hp=b.maxHp}
 export function clearBossCurse(b){if(!b.cursed)return false;b.cursed=false;b.mirrors=[];return true}
@@ -71,7 +72,7 @@ export function updateBoss(b,p,dt,time,events){
  if(collectRecovery(b,p))events.recovered?.();
 }
 export const BOSS_ATTACK_LABELS={claw:'揮爪',bolt:'吐息：離開瞄準線',curse:'認知顛倒',stomp:'重踏：跳離地面'};
-export function drawBear(g,b,time,reduced){
+export function drawBear(g,b,time,reduced,telegraph=true){
  const box=(x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h)};
  const poly=(pts,c)=>{g.fillStyle=c;g.beginPath();pts.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.fill()};
  const ready=b.state==='ready',striking=b.state==='strike',stomp=b.attack==='stomp',cast=b.attack==='bolt'||b.attack==='curse';
@@ -82,7 +83,7 @@ export function drawBear(g,b,time,reduced){
  for(const x of [-24,-17,-10,15,22,29])box(x,34,5,4,'#e5c8a9');
  g.translate(0,bodyY);
  poly([[-37,-24],[-25,-40],[0,-35],[25,-23],[30,18],[15,30],[-20,25],[-34,8]],'#281e2c');
- poly([[-32,-22],[-21,-33],[1,-29],[23,-20],[25,13],[10,23],[-20,18]],time<b.stun?'#ebad9a':'#a5414d');
+ poly([[-32,-22],[-21,-33],[1,-29],[23,-20],[25,13],[10,23],[-20,18]],'#a5414d');
  poly([[-26,-13],[-4,-22],[17,-14],[17,18],[-6,22],[-24,7]],'#723042');
  poly([[-8,-18],[12,-15],[18,3],[6,15],[-12,10]],'#c66361');
  for(let j=0;j<3;j++)poly([[-34,-17+j*12],[-45,-27+j*12],[-42,-8+j*12],[-32,-3+j*12]],j%2?'#52989d':'#8acdc4');
@@ -98,7 +99,7 @@ export function drawBear(g,b,time,reduced){
  if(cast&&(ready||striking)){box(19,-10,18,14,'#211b2a');box(20,-10,4,5,'#ffe5bd');box(30,-10,4,5,'#ffe5bd');box(23,1,10,3,'#df779b');g.fillStyle=b.attack==='curse'?'#a9f1ec':'#ffbb98';g.beginPath();g.arc(39,-5,ready?4+Math.max(0,1-b.timer)*9:12,0,Math.PI*2);g.fill()}
  if(striking&&b.attack==='claw'){g.strokeStyle='#f7c8ab';g.lineWidth=3;for(let i=0;i<3;i++){g.beginPath();g.moveTo(31,-24+i*12);g.quadraticCurveTo(91,-20+i*12,114,25+i*9);g.stroke()}}
  g.restore();
- drawBossTelegraph(g,b);
+ if(telegraph)drawBossTelegraph(g,b);
 }
 export function drawBossTelegraph(g,b){
  if(b.state==='ready'){g.save();g.strokeStyle=(b.attack==='bolt'||b.attack==='curse')?'#e4a3db':'#f4be8a';g.lineWidth=2;g.setLineDash([5,5]);g.beginPath();

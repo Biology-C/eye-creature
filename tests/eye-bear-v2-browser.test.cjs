@@ -16,7 +16,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
     Object.assign(t.p,{x:t.b.x-24,y:t.b.y,face:1});t.pressAttack();t.tick(12);const hp=t.b.hp;t.tick(10);t.releaseAttack();t.render();
     return {cancelled,magic:t.shots.length,hp,after:t.b.hp,dash:t.p.dashRemaining,energy:t.p.energy,cursed:t.b.cursed};
    });
-   assert.deepEqual(transformed,{cancelled:[true,null,0,0],magic:0,hp:29,after:29,dash:0,energy:60,cursed:true});
+   assert.deepEqual(transformed,{cancelled:[true,null,0,0],magic:0,hp:35,after:35,dash:0,energy:60,cursed:true});
    if(phone){assert.equal(await page.locator('#flap small').textContent(),'跳躍／攀附');assert.equal(await page.locator('.attack small').textContent(),'跳撞');assert.ok(await page.locator('#dash').isDisabled())}
    const mirror=await page.evaluate(()=>{
     const t=v2;t.prepare();t.curse();Object.assign(t.p,{x:300,y:t.world.arena.floor-11.01});t.b.x=576;t.b.state='ready';t.b.attack='stomp';t.b.timer=.001;t.tick(1);const falling=t.b.mirrors.length===1&&!t.b.mirrors[0].landed;t.tick(140);t.render();return {falling,landed:t.b.mirrors[0].landed};
@@ -25,10 +25,10 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
    const cured=await page.evaluate(()=>{const t=v2,m=t.b.mirrors[0];Object.assign(t.p,{x:m.x,y:t.world.arena.floor-11.01});t.tick(1);t.keys.add('up');t.tick(5);return {form:t.p.slimeForm,cursed:t.b.cursed,mirrors:t.b.mirrors.length,flapping:t.p.flapping}});assert.deepEqual(cured,{form:false,cursed:false,mirrors:0,flapping:true});
    if(phone){assert.equal(await page.locator('#flap small').textContent(),'拍翼');assert.equal(await page.locator('#dash').isDisabled(),false)}
    const waves=await page.evaluate(()=>{
-    const t=v2;t.prepare();const count=()=>t.rats.filter(r=>r.bossMinion&&r.hp).length;t.b.hp=22.5;t.tick(1);const a=count();t.tick(10);const b=count();t.b.hp=15;t.tick(1);const c=count();t.b.hp=6;t.tick(1);const d=count();
+    const t=v2;t.prepare();const count=()=>t.rats.filter(r=>r.bossMinion&&r.hp).length;t.b.hp=27;t.tick(1);const a=count();t.tick(10);const b=count();t.b.hp=18;t.tick(1);const c=count();t.b.hp=7.2;t.tick(1);const d=count();
     const big=t.rats.find(r=>r.bossMinion&&r.big);big.hp=0;t.tick(1);const children=t.rats.filter(r=>r.bossMinion&&r.child).length;t.tick(1);const again=t.rats.filter(r=>r.bossMinion&&r.child).length;
     t.curse();t.p.hp=.5;t.p.inv=0;t.hurt('test');const dead={active:t.b.active,hp:t.b.hp,form:t.p.slimeForm,minions:count(),mirrors:t.b.mirrors.length,shots:t.b.shots.length};t.beginBoss();return {a,b,c,d,children,again,dead,waves:t.b.waves};
-   });assert.deepEqual(waves,{a:2,b:2,c:5,d:6,children:4,again:4,dead:{active:false,hp:30,form:false,minions:0,mirrors:0,shots:0},waves:[]});
+   });assert.deepEqual(waves,{a:2,b:2,c:5,d:6,children:4,again:4,dead:{active:false,hp:36,form:false,minions:0,mirrors:0,shots:0},waves:[]});
    await page.evaluate(()=>{v2.prepare();v2.b.state='ready';v2.b.attack='bolt';v2.b.aim=Math.PI;v2.b.timer=.5;v2.render()});
    await page.screenshot({path:`tests/artifacts/bear-v2-cast-${phone?'phone':'desktop'}.png`});
    await page.evaluate(()=>{v2.curse();v2.keys.add('right');v2.pressAttack();v2.pause()});assert.equal(await page.evaluate(()=>v2.mode),'paused');assert.equal(await page.evaluate(()=>v2.keys.size),0);await page.evaluate(()=>{v2.resume();v2.b.hp=0;v2.tick(1)});assert.equal(await page.evaluate(()=>v2.p.slimeForm),false);

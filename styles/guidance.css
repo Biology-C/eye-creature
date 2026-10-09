@@ -15,3 +15,7 @@
 .resource-flash{color:#ffdf9c!important;text-shadow:0 0 8px #dcac6655}
 @media(orientation:landscape){.handheld main{grid-template-rows:19px 47px minmax(120px,1fr) 35px}.handheld .touch{grid-row:auto}}
 @media(max-height:500px) and (orientation:landscape){.handheld .viewport #notice{top:5%;padding:5px 8px}.handheld #overlay #description{font-size:16px}}
+
+#healing.resource-flash{color:#9ff0b6!important;text-shadow:0 0 8px #58dc8955}
+.light #healing.resource-flash{color:#23623a!important;text-shadow:none}
+.handheld #healing.resource-flash{color:var(--ink)!important;text-shadow:none}

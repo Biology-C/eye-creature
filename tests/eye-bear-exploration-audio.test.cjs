@@ -17,7 +17,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
  const curse=await page.evaluate(()=>{const t=ba;t.arena();t.pressAttack();t.tick(15);t.syncChargeSound();const charging=t.sfx.charging;t.b.cursed=true;t.tick(2);t.syncChargeSound();return {charging,stopped:!t.sfx.charging,form:t.p.slimeForm,calls:t.calls}});
  assert.deepEqual(curse,{charging:true,stopped:true,form:true,calls:[{name:'curse'}]});
  const hop=await page.evaluate(()=>{const t=ba;t.calls=[];Object.assign(t.p,{x:t.b.x-24,y:t.b.y,face:1});t.pressAttack();t.applySlimeHit();t.applySlimeHit();t.combatSounds.flush();return {hp:t.b.hp,calls:t.calls}});
- assert.deepEqual(hop,{hp:29,calls:[{name:'hit',big:true}]});
+ assert.deepEqual(hop,{hp:35,calls:[{name:'hit',big:true}]});
  const cure=await page.evaluate(()=>{const t=ba;t.calls=[];const x=t.world.arena.left+104;Object.assign(t.p,{x,y:t.world.arena.floor-11.01});t.b.mirrors=[{x,y:t.world.arena.floor-16,vy:0,landed:true}];t.tick(2);return {form:t.p.slimeForm,calls:t.calls}});
  assert.deepEqual(cure,{form:false,calls:[{name:'mirror'}]});
  const summons=await page.evaluate(()=>{const t=ba;t.arena();t.b.hp=6;t.tick(2);const first=t.calls.filter(c=>c.name==='bossSummon').length;t.b.hp=5;t.tick(2);return {first,total:t.calls.filter(c=>c.name==='bossSummon').length,waves:t.b.waves,ids:t.rats.filter(r=>r.bossMinion).map(r=>r.id)}});

@@ -1,5 +1,5 @@
 // Authored spine with deterministic optional branches. Coordinates are 32px tiles.
-export const LEVEL_VERSION='adventure-2';
+export const LEVEL_VERSION='adventure-4';
 export function buildAdventure(seed=2917){
  const T=32,cols=20,rows=16,W=163,H=131,stride=8;
  const graph=Array.from({length:cols*rows},()=>[]),used=new Set(),edges=[],main=[];
@@ -45,9 +45,14 @@ export function buildAdventure(seed=2917){
  const eligible=[...new Set([...main,...used])].filter((n,i)=>i>8&&!(n%cols<=6&&Math.floor(n/cols)>=8)&&!branches.some(b=>b.node===n)&&!safeNodes.includes(n)&&!lightNodes.includes(n)&&[0,1,2,3,4].every(d=>map[tile(n).y+5]?.[tile(n).x+d]===1));
  const picked=new Set();function select(count,offset=0){const out=[];for(let k=0;k<eligible.length&&out.length<count;k++){const n=eligible[(k*7+offset)%eligible.length];if(!picked.has(n)){picked.add(n);out.push(n)}}for(const n of eligible)if(out.length<count&&!picked.has(n)){picked.add(n);out.push(n)}return out}
  const ratNodes=[node(3,10),...select(11)],pure=select(10,2),big=select(3,4),treeNodes=select(3,6);
+ // Retain stable spawn IDs and main-route encounters before optional duplicates.
+ const retain=(list,count)=>list.sort((a,b)=>Number(!main.includes(a.node))-Number(!main.includes(b.node))).slice(0,count);
  const rats=ratNodes.map((n,i)=>({id:'rat-'+i,...floorPoint(n)}));
  const pureSpawns=pure.map((n,i)=>({id:'slime-'+i,...floorPoint(n),pure:true})),bigSpawns=big.map((n,i)=>({id:'big-'+i,...floorPoint(n),y:floorPoint(n).y-8,pure:true,big:true,bodyRadius:22,radiusX:22,radiusY:22}));
- const faunaSpec={trees:treeNodes.map(floorPoint),birds:[...treeNodes,...main.filter((n,i)=>i>18&&i%12===0&&!treeNodes.includes(n)).slice(0,3)].map(n=>({...position(n),region:regionOf(n)}))};
+ rats.splice(0,rats.length,...retain(rats,8));pureSpawns.splice(0,pureSpawns.length,...retain(pureSpawns,7));bigSpawns.splice(0,bigSpawns.length,...retain(bigSpawns,2));
+ const faunaSpec={birdRules:{interval:3,cap:4,regional:true},trees:treeNodes.map(floorPoint),birds:[...treeNodes,...main.filter((n,i)=>i>18&&i%12===0&&!treeNodes.includes(n)).slice(0,3)].map(n=>({...position(n),region:regionOf(n)}))};
+ // Scene mirrors are landmarks, independent of the reduced initial bird population.
+ faunaSpec.mirrorSpawns=faunaSpec.birds.map(b=>({...b}));faunaSpec.birds=faunaSpec.birds.slice(0,4);
  const trapNodes=eligible.filter(n=>!ratNodes.includes(n)&&!treeNodes.includes(n)).filter((_,i)=>i>0&&i%4===0).slice(0,4),traps=trapNodes.map(n=>({x:(tile(n).x+1.5)*T,y:(tile(n).y+5)*T,w:64,node:n}));
  const rewards=[];const energy=(id,x,y,amount=1)=>rewards.push({id,x,y,kind:'energy',amount,got:false,node:0});
  for(let i=0;i<30;i++)energy('intro-energy-'+i,start.x+90+i*34,(tile(node(1,10)).y+5)*T-26);
@@ -55,6 +60,16 @@ export function buildAdventure(seed=2917){
  for(const [i,n]of main.entries())if(i>6&&i%5===0){const p=position(n);rewards.push({id:'wing-'+n,node:n,...p,kind:'wing',got:false})}
  const abilities=['spread','dash','breach'],names=['稜光徽章','疾風緞帶','破界劍柄'];
  branches.filter(b=>b.kind==='relic').forEach((b,i)=>rewards.push({id:'relic-'+i,node:b.node,...position(b.node),kind:'relic',ability:abilities[i],name:names[i],got:false}));
+ // +60% total orange energy (110 -> 176), concentrated after the second relic area.
+ // Keep the initial 30-point lesson; retain the existing routes and stable pickup IDs.
+ const energySites=rewards.filter(r=>r.kind==='energy'&&!r.id.startsWith('intro-energy')).slice(8);
+ const relicSites=rewards.filter(r=>r.kind==='relic');
+ for(let i=0;i<28;i++){
+  let x,y;
+  if(i<14){const p=energySites[Math.floor(i*energySites.length/14)];x=p.x+(i%2?-24:24);y=p.y}
+  else{const last=i>=20,p=relicSites[last?2:1],j=i-(last?20:14);x=p.x-48+(j%4)*32;y=p.y+24+Math.floor(j/4)*28}
+  energy('bonus-energy-'+i,x,y,i<10?3:2);
+ }
  const echoes=branches.filter(b=>b.kind==='echo').map((b,i)=>({id:'echo-'+i,...position(b.node),region:b.region,got:false,text:['我曾舉起劍，替人們守住歸途。','他們奪走身體，卻留下我的眼睛。','這一次，我要親手打開回家的路。'][i]}));
  const obstacles=branches.filter(b=>b.kind==='relic').map((b,i)=>{const p=tile(b.node);return {id:'root-'+i,x:(p.x+2.5)*T,y:(p.y+4)*T,w:48,h:64,radiusX:24,radiusY:32,hp:1,stage:i+1,kind:['root','bramble','screen'][i],broken:false}});
  const protectedRects=[{x:0,y:0,w:W*T,h:64},{x:0,y:(H-2)*T,w:W*T,h:64},{x:0,y:0,w:64,h:H*T},{x:(W-2)*T,y:0,w:64,h:H*T},...safeNodes.map(n=>({x:(tile(n).x-1)*T,y:(tile(n).y-1)*T,w:7*T,h:7*T})),{x:tile(node(1,8)).x*T-32,y:tile(node(1,8)).y*T-32,w:48*T,h:24*T}];

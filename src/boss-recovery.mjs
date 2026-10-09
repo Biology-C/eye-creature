@@ -21,8 +21,8 @@ export function collectRecovery(b,p){
 export function drawRecovery(g,b,time,reduced){
  const r=b.recovery;if(!r)return;
  const pulse=reduced?.7:.65+.35*Math.sin(time*4);
- g.save();g.fillStyle='#68dfff';g.globalAlpha=.12+pulse*.12;
+ g.save();g.fillStyle='#58dc89';g.globalAlpha=.12+pulse*.12;
  g.beginPath();g.arc(r.x,r.y,28+pulse*7,0,Math.PI*2);g.fill();
- g.globalAlpha=.4+pulse*.25;g.strokeStyle='#b8ffff';g.lineWidth=2;g.beginPath();g.arc(r.x,r.y,21+pulse*3,0,Math.PI*2);g.stroke();
+ g.globalAlpha=.4+pulse*.25;g.strokeStyle='#b7ffd0';g.lineWidth=2;g.beginPath();g.arc(r.x,r.y,21+pulse*3,0,Math.PI*2);g.stroke();
  g.globalAlpha=1;drawPickupIcon(g,'wing',r.x,r.y,1.5);g.restore();
 }

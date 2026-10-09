@@ -6,7 +6,7 @@ import {MAX_HP} from '../src/health.mjs';
 const w=buildAdventure();addBossArena(w);
 function encounter(hp=2){const b=createBoss(w),p={};enterBoss(b,p,w.arena);p.hp=hp;p.x=400;p.y=w.arena.floor-100;return {b,p}}
 function stomp(b,p,time){b.state='ready';b.attack='stomp';b.timer=.001;updateBoss(b,p,.002,time,{clear:()=>true,hurt:()=>{}})}
-for(const hp of [.5,1,2,3,4,5]){const {b,p}=encounter(hp);stomp(b,p,1);assert.equal(!!b.recovery,hp<=2);assert.equal(b.hp,30)}
+for(const hp of [.5,1,2,3,4,5]){const {b,p}=encounter(hp);stomp(b,p,1);assert.equal(!!b.recovery,hp<=2);assert.equal(b.hp,36)}
 const {b,p}=encounter();stomp(b,p,1);const first={...b.recovery};stomp(b,p,50);assert.deepEqual(b.recovery,first,'existing energy is never replaced or expired');
 Object.assign(p,b.recovery);assert.ok(collectRecovery(b,p));assert.equal(p.hp,3);assert.equal(collectRecovery(b,p),false);
 p.hp=2;p.y=w.arena.floor-100;stomp(b,p,20.999);assert.equal(b.recovery,null);stomp(b,p,21);assert.equal(b.recovery,null);stomp(b,p,21.001);assert.ok(b.recovery);

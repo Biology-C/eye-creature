@@ -3,7 +3,7 @@ export function castLight(s,p,time,charged=false){
  if(time<s.ready)return false;
  // Lift the 12px charged orb above the grounded 11px player radius.
  const originY=p.y-(charged?4:0);
- s.ready=time+.5;const hitTargets=new Set();for(const angle of (!charged&&p.abilities?.spread?[-.24,0,.24]:[0]))s.shots.push({x:p.x,y:originY,face:p.face,damage:charged?1.5:1,radius:charged?12:4,charged,hitTargets,dx:p.face*Math.cos(angle),dy:Math.sin(angle),travel:0});
+ s.ready=time+.5;const hitTargets=new Set();for(const angle of (!charged&&p.abilities?.spread?[-.24,0,.24]:[0]))s.shots.push({x:p.x,y:originY,face:p.face,damage:charged?3:1,radius:charged?12:4,charged,hitTargets,dx:p.face*Math.cos(angle),dy:Math.sin(angle),travel:0});
  s.effects.push({x:p.x+p.face*12,y:p.y,kind:'cast',until:time+.18});return true;
 }
 export function updateMagic(s,dt,time,{solid,targets,hit}){

@@ -34,7 +34,7 @@ export function bindTouchControls(root, {down, up, cancel, playing}) {
 
 export function createSceneMirrors(world) {
   const solid = (x,y) => world.map[Math.floor(y/world.T)]?.[Math.floor(x/world.T)] !== 0;
-  return (world.faunaSpec?.birds || []).flatMap((zone, index) => {
+  return (world.faunaSpec?.mirrorSpawns || world.faunaSpec?.birds || []).flatMap((zone, index) => {
     for (const offset of [-64,64,-96,96,0]) {
       const x = zone.x + offset;
       for (let y = Math.floor(zone.y/world.T)*world.T; y <= zone.y+192; y += world.T) {

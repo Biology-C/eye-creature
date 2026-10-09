@@ -42,3 +42,5 @@ The five-segment HP display is original SVG/CSS artwork based on the user-provid
 
 
 - 手機掌機介面：原創 CSS 像素邊框、十字鍵、A/B/X 按鍵與綠灰調色；依使用者核定的掌機樣張重新實作，未使用參考照片作遊戲素材。场景鏡面以原創 Canvas 幾何繪製。
+
+- Region recognition / healing feedback: original code-rendered vines, mushrooms, flowers, wind grilles, straight wind streaks, green healing particles and HP overlays (`region-features.mjs`, `feedback.mjs`). Boss tint reuses the existing sprite alpha mask; no additional image asset. Wind warning uses original Web Audio tones through `cues.mjs`.

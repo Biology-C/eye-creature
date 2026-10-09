@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
+import {installRegionFeatures} from '../src/region-features.mjs';
 import {buildAdventure} from '../src/adventure.mjs';
 import {attackIntent,validBreachHold,createSceneMirrors} from '../src/handheld.mjs';
 import {addSurfaceSpikes,removeSpikeShelters} from '../src/traps.mjs';
 for(let seed=0;seed<100;seed++){
- const w=buildAdventure(seed);addSurfaceSpikes(w);removeSpikeShelters(w);
+ const w=buildAdventure(seed);addSurfaceSpikes(w);removeSpikeShelters(w);installRegionFeatures(w);
  const mirrors=createSceneMirrors(w);assert.equal(mirrors.length,6);
  for(const m of mirrors){assert.equal(w.map[Math.floor(m.y/32)][Math.floor(m.x/32)],0);assert.equal(w.map[Math.floor((m.y+29)/32)][Math.floor(m.x/32)],1);assert.ok(w.traps.every(t=>Math.hypot(t.x-m.x,t.y-m.y-28)>=110));}
 }

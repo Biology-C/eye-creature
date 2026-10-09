@@ -6,8 +6,9 @@ import {setSlimeForm,startSlimeAttack,updateSlimePlayer} from '../src/player-for
 const w=buildMaze();addBossArena(w);
 const b=createBoss(w),p={};enterBoss(b,p,w.arena);p.x=400;
 const waves=[],events={clear:()=>true,hurt:()=>{},summon:(k,i)=>waves.push([i,k.length])};
-for(const hp of [23,22.5,22.5,16,15,15,7,6,6]){b.hp=hp;updateBoss(b,p,.01,0,events)}
+for(const hp of [28,27,27,19,18,18,8,7.2,7.2]){b.hp=hp;updateBoss(b,p,.01,0,events)}
 assert.deepEqual(waves,[[0,2],[1,3],[2,1]]);
+for(const [i,threshold]of [27,18,7.2].entries()){const bear=createBoss(w);enterBoss(bear,p,w.arena);const called=[];const hooks={clear:()=>true,hurt(){},summon:(k,j)=>called.push(j)};bear.hp=threshold+.001;updateBoss(bear,p,0,0,hooks);assert.ok(!called.includes(i));bear.hp=threshold;updateBoss(bear,p,0,0,hooks);updateBoss(bear,p,0,0,hooks);assert.equal(called.filter(j=>j===i).length,1)}
 resetBoss(b);enterBoss(b,p,w.arena);b.hp=5;waves.length=0;updateBoss(b,p,.01,0,events);assert.equal(waves.length,3);
 assert.equal(bossSummons(b,p,['rat','slime','big'],5).length,1);
 const summons=bossSummons(b,p,['rat','slime','big']);assert.deepEqual(summons.map(s=>s.hp),[2,1,3]);assert.equal(new Set(summons.map(s=>s.id)).size,3);
@@ -28,7 +29,7 @@ for(const fps of [30,60,120]){
  // A wall between projectile and player must absorb every bolt.
  boss.shots=[{x:300,y:100,vx:245,vy:0,life:3,radius:9,kind:'bolt'}];boss.arena={...boss.arena,top:0,floor:500};boss.timer=10;
  player.x=400;player.y=100;hits=0;updateBoss(boss,player,.8,6,{clear:()=>true,solid:(x)=>x>=330&&x<=345,hurt:()=>hits++});assert.equal(hits,0);assert.equal(boss.shots.length,0);
- resetBoss(boss);assert.equal(boss.hp,30);assert.deepEqual(boss.waves,[]);assert.deepEqual(boss.mirrors,[]);assert.deepEqual(boss.shots,[]);
+ resetBoss(boss);assert.equal(boss.hp,36);assert.deepEqual(boss.waves,[]);assert.deepEqual(boss.mirrors,[]);assert.deepEqual(boss.shots,[]);
  const map=Array.from({length:20},(_,y)=>Array.from({length:24},(_,x)=>y===19||x===0||x===23||y===0?1:0));
  const physics=createPhysics(map,32,[]),slime={x:160,y:19*32-11.01,grounded:true,face:1,hp:4,wing:.7,abilities:{dash:true}};
  setSlimeForm(slime,true);assert.ok(startSlimeAttack(slime));assert.equal(startSlimeAttack(slime),false);

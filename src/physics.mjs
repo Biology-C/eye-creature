@@ -1,3 +1,4 @@
+import {stepGust} from './region-features.mjs';
 export const RUN_SPEED=260,MAX_WING=.7;
 export function startDash(o){
  if((o.dashCooldown||0)>0||(o.dashRemaining||0)>0)return false;
@@ -20,7 +21,7 @@ export function createPhysics(map,T,platforms,blocked=()=>false){
   }
  }
  function horizontal(o,dx,r){const n=Math.max(1,Math.ceil(Math.abs(dx)/3));for(let i=0;i<n;i++)if(free(o.x+dx/n,o.y,r))o.x+=dx/n;}
- function player(o,keys,dt,inWind=false){
+ function player(o,keys,dt,inWind=false,horizontalWind=()=>0){
   const n=Math.max(1,Math.ceil(dt*120)),step=dt/n;
   for(let i=0;i<n;i++){
    o.dashCooldown=Math.max(0,(o.dashCooldown||0)-step);
@@ -35,7 +36,7 @@ export function createPhysics(map,T,platforms,blocked=()=>false){
    if(inWind&&!down){o.vy=Math.max(-220,o.vy-650*step);o.flapping=false;o.gliding=true;o.grounded=false}
    else if(o.flapping){o.wing=Math.max(0,o.wing-step);o.vy=-260;o.grounded=false}
    else o.vy=Math.min(down?480:o.gliding?65:360,o.vy+(o.gliding?200:850)*step);
-   horizontal(o,(Number(keys.has('right'))-Number(keys.has('left')))*RUN_SPEED*step,11);
+   horizontal(o,(Number(keys.has('right'))-Number(keys.has('left')))*RUN_SPEED*step+stepGust(o,horizontalWind(o,i*step),step),11);
    fall(o,o.vy*step,11,!down);
   }
  }
