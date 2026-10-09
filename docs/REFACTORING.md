@@ -75,3 +75,10 @@ DEFAULT_BALANCE 是深層凍結快照；BALANCE 為本頁模組實例，僅 debu
 一般模式另比較與重構前相同的 8 張固定狀態 PNG，覆蓋桌面與手機的開場、裂牆、牆刺與紅熊。
 這些測試不代表每一條路線、所有長時間輸入或真人手感均已涵蓋；音效聽感未人工重聽。
 本次不推送，線上版本不受影響。
+
+## game.js 拆分後的測試介面
+
+實例與各模組入口見 [ARCHITECTURE](ARCHITECTURE.md)，逐步提交見 [拆分紀錄](GAME_REFACTOR.md)。
+既有白箱測試以 tests/helpers/game-harness.cjs 注入相容介面：只在被攔截的測試頁面加入實例別名，
+正式遊戲沒有這些可寫入 window 屬性。原斷言與情境保留；加速通關测试仍可暫停繪圖。
+Golden 回放完全不用這層橋接，繼續走真實按鍵、loop 與正式唯讀 levelSnapshot。

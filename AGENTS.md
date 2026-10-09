@@ -43,9 +43,13 @@ Linux CI 安裝瀏覽器時使用 `npx playwright install --with-deps chromium`�
 - 不為了通過 lint 移除不熟悉的副作用、改函式參數契約或測試斷言。
 - no-undef、no-unused-vars、no-redeclare 必須無 error；其餘啟用規則先以 warn 提醒。
   測試注入的全域名稱逐檔宣告；必要例外須局部註解理由，不可整個目錄關閉檢查。
-- 本次排版揭露的既有大檔暫列例外：src/game.js、src/sfx.mjs、src/boss.mjs、
-  src/adventure.mjs。此次不拆分，以免混入行為變動；日後須另開任務逐步抽模組，
-  不繼續把新功能塞進大檔。其餘新建或重構模組遵守 400 行限制。
+- 既有大檔例外為 src/sfx.mjs、src/boss.mjs、src/adventure.mjs；不繼續堆疊新功能。
+  game.js 已拆分為 3 行啟動入口；core、systems、ui、render、scenes 新模組一律 ≤400 行。
+- 本局可變狀態新增到 core/state.mjs，服務透過 bootstrap 的 app 實例組裝，不新增模組全域 let。
+- 玩家／敵人扣血必須經 systems/combat.mjs；回血／載入用 setHealth／restoreActor。
+  一般邏輯只發 events，不直接 sfx.play；新增訂閱不能改世界或重新結算命中。
+- 保留 loop 的原有可變 dt 與更新順序；固定時鐘是 golden 測試機制，不能順便換物理積分方式。
+- eye-architecture 與 eye-damage-entry 是結構護欄；不得為了繞過它們把邏輯塞回 game.js。
 
 ## 分支與 commit
 
