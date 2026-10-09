@@ -1,3 +1,4 @@
+import { damageEnemy } from "./systems/combat.mjs";
 import { BALANCE as B } from "./config/balance.mjs";
 import { updateTornadoes } from "./tornado.mjs";
 import { inMelee } from "./combat.mjs";
@@ -100,17 +101,19 @@ export function meleeFauna(s, p, time, clear, targets = null) {
     // eslint-disable-next-line no-unused-vars -- Legacy binding retained for the no-behavior-change tooling pass; review in a separate cleanup.
     const dx = (e.x - p.x) * p.face;
     if ((!targets || targets.includes(e)) && inMelee(p, e, clear)) {
-      e.hp = Math.max(0, e.hp - B.attack.meleeDamage[(p.stage || 1) - 1]);
-      e.stun = time + B.attack.enemyStun;
-      if (!e.hp) {
-        killed++;
-        if ("node" in e) {
-          felled++;
-          const z = s.zones[e.id];
-          spawnBird(s, z);
-          spawnBird(s, z);
-        }
-      }
+      damageEnemy(e, B.attack.meleeDamage[(p.stage || 1) - 1], {
+        time,
+        stun: B.attack.enemyStun,
+        onDefeat: () => {
+          killed++;
+          if ("node" in e) {
+            felled++;
+            const z = s.zones[e.id];
+            spawnBird(s, z);
+            spawnBird(s, z);
+          }
+        },
+      });
     }
   }
   return { killed, felled };
@@ -242,8 +245,11 @@ export function updateFauna(s, p, time, dt, { clear, free, hurt, visible, region
     if (b.mode === "mirror") {
       b.timer -= dt;
       if (b.timer <= 0) {
-        b.hp = 0;
-        kills++;
+        damageEnemy(b, b.hp, {
+          onDefeat: () => {
+            kills++;
+          },
+        });
       }
       continue;
     }

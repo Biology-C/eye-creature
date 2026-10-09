@@ -23,6 +23,7 @@ scripts/build-pages.cjs 將原版放根目錄、探索版放 preview/，共用 v
 | combat-sounds.mjs | 將實際受傷結果轉為音效，處理命中去重與死亡音優先順序。 |
 | combat.mjs | 提供近戰範圍、身體尺寸及牆面阻隔的共用命中判定。 |
 | config/balance.mjs | 集中玩家、戰鬥、敵人、魔王、資源、陷阱與教學的可調參數及唯讀預設快照。 |
+| systems/combat.mjs | 唯一角色 HP 寫入與傷害入口；處理無敵、死亡、老鼠血量形態及延後分裂，另提供回血與還原入口。 |
 | core/events.mjs | 每個遊戲實例的同步 on/off/emit 匯流排；依註冊順序完成回饋，不延後事件。 |
 | ui/event-feedback.mjs | 訂閱戰鬥、拾取、環境與畫面事件，驅動音效、音樂、回血視覺及 HUD。 |
 | core/state.mjs | 每局唯一 GameState；建立獨立集合並以 resetState 更新指定欄位，保留物件身分。 |

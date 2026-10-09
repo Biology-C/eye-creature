@@ -1,3 +1,4 @@
+import { setHealth } from "./systems/combat.mjs";
 import { BALANCE, DEFAULT_BALANCE } from "./config/balance.mjs";
 
 // Explicit whitelist: DOM input never becomes arbitrary object-property access.
@@ -26,7 +27,7 @@ const fields = [
 
 function updateLivingHp(state, key, previous, value) {
   const rescale = (enemy) => {
-    if (enemy.hp > 0) enemy.hp = Math.min(value, (enemy.hp / previous) * value);
+    if (enemy.hp > 0) setHealth(enemy, Math.min(value, (enemy.hp / previous) * value));
   };
   if (key === "boss.maxHp") {
     rescale(state.boss);
@@ -124,7 +125,7 @@ export function createDebugPanel(api) {
   };
   root.querySelector("#refill").onclick = () => {
     const { player } = api.state();
-    player.hp = BALANCE.player.maxHp;
+    setHealth(player, BALANCE.player.maxHp);
     player.energy = Math.max(300, player.energy);
     api.refresh();
     status.textContent = "生命與測試能量已補充，不寫入存檔。";

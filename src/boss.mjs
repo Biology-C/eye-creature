@@ -1,3 +1,4 @@
+import { setHealth, restoreActor } from "./systems/combat.mjs";
 import { BALANCE as B } from "./config/balance.mjs";
 import { MAX_HP } from "./health.mjs";
 import { dropRecovery, collectRecovery, drawRecovery } from "./boss-recovery.mjs";
@@ -59,7 +60,7 @@ export function enterBoss(b, p, a) {
   b.active = true;
   b.x = 576;
   b.y = a.floor - 38;
-  Object.assign(p, {
+  restoreActor(p, {
     x: a.start.x,
     y: a.start.y,
     vy: 0,
@@ -71,7 +72,7 @@ export function enterBoss(b, p, a) {
 export function resetBoss(b) {
   b.active = false;
   resetEncounter(b);
-  if (b.hp > 0) b.hp = b.maxHp;
+  if (b.hp > 0) setHealth(b, b.maxHp);
 }
 export function clearBossCurse(b) {
   if (!b.cursed) return false;

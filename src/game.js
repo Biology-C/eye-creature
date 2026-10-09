@@ -1,3 +1,4 @@
+import { createCombat, setHealth, restoreActor } from "./systems/combat.mjs";
 import { createEvents } from "./core/events.mjs";
 import { subscribeFeedback } from "./ui/event-feedback.mjs";
 import { createState, resetState } from "./core/state.mjs";
@@ -54,14 +55,13 @@ import { readSave, writeSave, SAVE_KEY } from "./save.mjs";
 import { createCues } from "./cues.mjs";
 import { drawExploration } from "./exploration-art.mjs";
 import { MAX_HP, healthMarkup, criticalOpacity } from "./health.mjs";
-import { createPureSlimes, createBigSlimes, splitSlime, isSlime } from "./slime.mjs";
+import { createPureSlimes, createBigSlimes, isSlime } from "./slime.mjs";
 import { drawTerrain } from "./terrain.mjs";
 import { drawTornadoes } from "./tornado.mjs";
 import {
   addBossArena,
   createBoss,
   enterBoss,
-  resetBoss,
   updateBoss,
   drawBear,
   drawBossEffects,
@@ -212,6 +212,15 @@ function showImportantMessages() {
   syncMusic();
   messageCard.show(gameState.importantMessages.shift());
 }
+const combat = createCombat({
+  gameState,
+  events,
+  updateHud,
+  cancelAttackInput,
+  syncForm,
+  say,
+  enemyDamageSound,
+});
 const sfx = createSfx({ volume: SFX_DEFAULT });
 const combatSounds = createCombatSounds(sfx);
 
@@ -762,6 +771,7 @@ function impact(e, damage = B.enemy.contactDamage) {
   gameState.hitStop = Math.max(gameState.hitStop, B.attack.hitStop);
 }
 function enemyDamageSound(e, before) {
+  if (!(before > 0 && e.hp < before)) return;
   events.emit(e.hp <= 0 ? "enemyDefeated" : "enemyHit", {
     enemy: e,
     before,
@@ -796,27 +806,22 @@ function applyMelee() {
       B.attack.meleeHitStops[(gameState.slash.stage || 1) - 1],
     );
     if (e === gameState.boss) {
-      gameState.boss.hp = Math.max(
-        0,
-        gameState.boss.hp - B.attack.meleeDamage[(gameState.slash.stage || 1) - 1],
-      );
-      gameState.boss.stun = gameState.time + B.attack.bossMeleeStun;
-      if (!gameState.boss.hp) {
-        gameState.kills++;
-        gameState.boss.cursed = false;
-        say("紅熊倒下！走向右側出口。", 5);
-      }
+      combat.damageEnemy(e, B.attack.meleeDamage[(gameState.slash.stage || 1) - 1], {
+        stun: B.attack.bossMeleeStun,
+        notify: false,
+        bossMessage: true,
+      });
     }
   }
   const hit = meleeFauna(gameState.fauna, gameState.slash, gameState.time, clearPath, targets);
   gameState.kills += hit.killed;
   syncStumps(world.platforms, gameState.fauna.trees);
   for (const r of gameState.rats.filter((e) => targets.includes(e))) {
-    r.hp = Math.max(0, r.hp - B.attack.meleeDamage[(gameState.slash.stage || 1) - 1]);
-    r.state = "rest";
-    r.timer = B.attack.enemyHitRest;
-    r.stun = gameState.time + B.attack.enemyStun;
-    if (!r.hp) gameState.kills++;
+    combat.damageEnemy(r, B.attack.meleeDamage[(gameState.slash.stage || 1) - 1], {
+      stun: B.attack.enemyStun,
+      rest: true,
+      notify: false,
+    });
   }
   for (const [e, hp] of hpBefore) enemyDamageSound(e, hp);
 }
@@ -1003,15 +1008,10 @@ function applySlimeHit() {
       continue;
     gameState.slimeHits.add(e);
     impact(e);
-    const beforeHp = e.hp;
-    e.hp = Math.max(0, e.hp - B.attack.slimeDamage);
-    enemyDamageSound(e, beforeHp);
-    e.stun = gameState.time + B.attack.enemyStun;
-    if (e !== gameState.boss) {
-      e.state = "rest";
-      e.timer = B.attack.enemyHitRest;
-    }
-    if (!e.hp) gameState.kills++;
+    combat.damageEnemy(e, B.attack.slimeDamage, {
+      stun: B.attack.enemyStun,
+      rest: e !== gameState.boss,
+    });
   }
 }
 function finishBoss() {
@@ -1023,66 +1023,8 @@ function finishBoss() {
   gameState.rats = gameState.rats.filter((r) => !r.bossMinion);
   syncForm();
 }
-// eslint-disable-next-line no-unused-vars -- Existing damage-source call signature retained; quiet HUD no longer displays this label.
 function hurt(source = "老鼠", damage = B.enemy.contactDamage) {
-  if (gameState.debug?.invincible) return;
-  if (gameState.time < gameState.player.inv) return;
-  const beforeHp = gameState.player.hp;
-  if (gameState.breachHold) {
-    gameState.breachHold = null;
-    gameState.breachConsumed = true;
-  }
-  gameState.hurtUntil = gameState.time + 0.35;
-  gameState.hitStop = Math.max(gameState.hitStop, 0.07);
-  gameState.magic.effects.push({
-    x: gameState.player.x,
-    y: gameState.player.y,
-    kind: "hurt",
-    damage,
-    until: gameState.time + 0.24,
-  });
-  gameState.player.hp = Math.max(0, gameState.player.hp - damage);
-  if (gameState.player.hp < beforeHp)
-    events.emit("playerHurt", { dead: gameState.player.hp === 0 });
-  gameState.player.inv = gameState.time + B.player.invulnerability;
-  updateHud();
-  if (gameState.player.hp <= 0) {
-    gameState.clearTouch();
-    gameState.deaths++;
-    gameState.cameraSnap = true;
-    gameState.nearLamp = null;
-    cancelAttackInput();
-    resetBoss(gameState.boss);
-    syncForm();
-    gameState.rats = gameState.rats.filter((r) => !r.bossMinion);
-    gameState.magic = createMagic();
-    gameState.dashTrail = [];
-    resetFaunaAfterDeath(gameState.fauna);
-    gameState.player.x = gameState.checkpoint.x;
-    gameState.player.y = gameState.checkpoint.y;
-    gameState.player.hp = MAX_HP;
-    gameState.player.vy = 0;
-    gameState.player.dashRemaining = 0;
-    gameState.player.dashCooldown = 0;
-    gameState.player.wing = MAX_WING;
-    gameState.player.grounded = false;
-    gameState.player.inv = gameState.time + B.player.respawnInvulnerability;
-    gameState.attackUntil = 0;
-    gameState.slash = null;
-    for (const r of gameState.rats)
-      if (r.hp) {
-        r.x = r.spawn;
-        r.y = r.y0;
-        r.state = "walk";
-        r.surface = null;
-        r.crawlDown = false;
-        r.timer = 0;
-        r.stun = 0;
-        r.vy = 0;
-      }
-    say("回到休息燈旁，生命補滿。已找到的光點保留。", 5);
-    updateHud();
-  }
+  return combat.damagePlayer(source, damage);
 }
 function beginBoss() {
   const hpBefore = gameState.player.hp;
@@ -1090,7 +1032,7 @@ function beginBoss() {
   gameState.rats = gameState.rats.filter((r) => !r.bossMinion);
   if (!legacy && !gameState.boss.active) {
     gameState.checkpoint = { ...world.safes.at(-1) };
-    gameState.player.hp = MAX_HP;
+    setHealth(gameState.player, MAX_HP);
     gameState.activated.add(world.safes.length - 1);
     saveCheckpoint();
   }
@@ -1278,7 +1220,7 @@ function restoreCheckpoint(s) {
     gameState.kills = s.kills;
     gameState.deaths = s.deaths;
     gameState.checkpoint = { ...s.checkpoint };
-    Object.assign(gameState.player, s.player, {
+    restoreActor(gameState.player, s.player, {
       x: gameState.checkpoint.x,
       y: gameState.checkpoint.y,
       inv: gameState.time + B.player.respawnInvulnerability,
@@ -1319,7 +1261,7 @@ function restoreCheckpoint(s) {
     gameState.seen.clear();
     s.seen.forEach((v) => gameState.seen.add(v));
     gameState.activated = new Set(s.activated);
-    if (s.bossDefeated) gameState.boss.hp = 0;
+    if (s.bossDefeated) setHealth(gameState.boss, 0);
     gameState.nearLamp = world.safes.findIndex(
       (l) => l.x === gameState.checkpoint.x && l.y === gameState.checkpoint.y,
     );
@@ -1404,15 +1346,10 @@ function update(dt) {
         continue;
       gameState.dashHits.add(e);
       impact(e);
-      const beforeHp = e.hp;
-      e.hp = Math.max(0, e.hp - B.attack.dashDamage);
-      enemyDamageSound(e, beforeHp);
-      e.stun = gameState.time + B.attack.enemyStun;
-      if (gameState.rats.includes(e)) {
-        e.state = "rest";
-        e.timer = B.attack.enemyHitRest;
-      }
-      if (!e.hp) gameState.kills++;
+      combat.damageEnemy(e, B.attack.dashDamage, {
+        stun: B.attack.enemyStun,
+        rest: gameState.rats.includes(e),
+      });
     }
   }
   if (gameState.comboQueue && gameState.time >= gameState.nextAttack) {
@@ -1450,16 +1387,12 @@ function update(dt) {
     hit: (e, damage = B.enemy.contactDamage) => {
       if (e.tree) return; // Tree bark blocks light; only melee can fell trees.
       impact(e, damage);
-      const beforeHp = e.hp;
-      e.hp = Math.max(0, e.hp - damage);
-      enemyDamageSound(e, beforeHp);
-      e.stun = gameState.time + B.attack.enemyStun;
-      if (gameState.rats.includes(e)) {
-        e.state = "rest";
-        e.timer = B.attack.enemyHitRest;
-        if (e.hp < 2 && !e.pure && !e.big) learn(gameState.exploration, "rat");
-      }
-      if (!e.hp) gameState.kills++;
+      combat.damageEnemy(e, damage, {
+        stun: B.attack.enemyStun,
+        rest: gameState.rats.includes(e),
+      });
+      if (gameState.rats.includes(e) && e.hp < 2 && !e.pure && !e.big)
+        learn(gameState.exploration, "rat");
     },
   });
   $("#magic").textContent =
@@ -1468,17 +1401,7 @@ function update(dt) {
       : gameState.time - gameState.chargeStart >= B.attack.chargeTime
         ? "蓄力完成 · 放開發射"
         : `蓄力 ${Math.min(100, Math.floor(((gameState.time - gameState.chargeStart) / B.attack.chargeTime) * 100))}%`;
-  for (const r of [...gameState.rats]) {
-    const children = splitSlime(r, free);
-    for (const child of children) {
-      if (r.bossMinion) child.bossMinion = true;
-      child.stun = gameState.time + B.attack.enemyStun;
-      gameState.struck.add(child);
-      gameState.dashHits.add(child);
-      for (const shot of gameState.magic.shots) shot.hitTargets?.add(child);
-    }
-    gameState.rats.push(...children);
-  }
+  combat.flushEnemyDeaths(free);
   finishBoss();
   for (const r of gameState.rats) {
     if (!r.hp) continue;
@@ -1635,7 +1558,7 @@ function update(dt) {
     const first = !gameState.activated.has(lamp);
     gameState.activated.add(lamp);
     gameState.checkpoint = { ...world.safes[lamp] };
-    if (first) gameState.player.hp = MAX_HP;
+    if (first) setHealth(gameState.player, MAX_HP);
     updateHud();
     saveCheckpoint();
   }

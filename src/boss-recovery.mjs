@@ -1,3 +1,4 @@
+import { setHealth } from "./systems/combat.mjs";
 import { BALANCE as B } from "./config/balance.mjs";
 import { MAX_HP } from "./health.mjs";
 import { drawPickupIcon } from "./pickup-art.mjs";
@@ -34,7 +35,7 @@ export function collectRecovery(b, p) {
     Math.hypot(p.x - b.recovery.x, p.y - b.recovery.y) > B.recovery.pickupRange
   )
     return false;
-  p.hp = Math.min(MAX_HP, p.hp + B.recovery.amount);
+  setHealth(p, Math.min(MAX_HP, p.hp + B.recovery.amount));
   b.recovery = null;
   return true;
 }
