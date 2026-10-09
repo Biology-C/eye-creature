@@ -7,6 +7,7 @@ export function createState(overrides = {}) {
     nearLamp: null,
     cameraSnap: true,
     keys: new Set(),
+    touchKeys: new Map(),
     seen: new Set(),
     drawHero: undefined,
     ratImage: undefined,

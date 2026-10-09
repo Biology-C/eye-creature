@@ -2,8 +2,6 @@ import { BALANCE as B } from "../config/balance.mjs";
 import { MAX_HP } from "../health.mjs";
 import { MAX_WING } from "../physics.mjs";
 import { createMagic } from "../magic.mjs";
-import { resetBoss } from "../boss.mjs";
-import { resetFaunaAfterDeath } from "../fauna.mjs";
 import { splitSlime } from "../slime.mjs";
 // Health writes outside damage (healing, encounter reset, restored snapshots, debug).
 export function setHealth(actor, value) {
@@ -40,8 +38,19 @@ export function createCombat({
   syncForm,
   say,
   enemyDamageSound,
+  resetBoss,
+  resetFaunaAfterDeath,
 }) {
-  const context = { gameState, events, updateHud, cancelAttackInput, syncForm, say };
+  const context = {
+    gameState,
+    events,
+    updateHud,
+    cancelAttackInput,
+    syncForm,
+    say,
+    resetBoss,
+    resetFaunaAfterDeath,
+  };
   return {
     damagePlayer: (source, amount) => damagePlayer(context, source, amount),
     damageEnemy(enemy, amount, { notify = true, bossMessage = false, learnRat, ...options } = {}) {
@@ -75,7 +84,16 @@ export function createCombat({
   };
 }
 export function damagePlayer(
-  { gameState, events, updateHud, cancelAttackInput, syncForm, say },
+  {
+    gameState,
+    events,
+    updateHud,
+    cancelAttackInput,
+    syncForm,
+    say,
+    resetBoss,
+    resetFaunaAfterDeath,
+  },
   source = "老鼠",
   damage = B.enemy.contactDamage,
 ) {
