@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global mc:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
@@ -22,7 +23,7 @@ const fs = require("node:fs"),
         r.fulfill({
           contentType: "application/javascript",
           body:
-            fs.readFileSync("src/game.js", "utf8") +
+            instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
             `
  window.mc={update,loop,render,pause,resume,keys,pressAttack,releaseAttack,syncChargeSound,beginBoss,sfx,world,get player(){return player},get boss(){return boss},get env(){return exploration},get mode(){return mode},get shots(){return magic.shots},get charge(){return chargeStart},get time(){return time},get attack(){return attackUntil},calls:[],
  prepare(){reset();resume();player.inv=1e9;rats.forEach(r=>r.hp=0);fauna.birds.forEach(r=>r.hp=0);fauna.trees.forEach(r=>r.hp=0);rewards.forEach(r=>r.got=true);mc.calls=[]},

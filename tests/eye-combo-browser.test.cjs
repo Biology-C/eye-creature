@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global test:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("fs"),
@@ -15,7 +16,7 @@ const fs = require("fs"),
       r.fulfill({
         contentType: "application/javascript",
         body:
-          fs.readFileSync("src/game.js", "utf8") +
+          instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
           `
 window.test={solid,free,reset,pressAttack,releaseAttack,pause,resume,attack,update,render,applyMelee,get p(){return player},get rats(){return rats},get magic(){return magic},get slash(){return slash},get fauna(){return fauna},get charging(){return chargeStart},tick(n){for(let i=0;i<n;i++)update(.01)},clock(t){time=t},get time(){return time},clean(){rats.forEach(r=>r.hp=0);fauna.birds.forEach(r=>r.hp=0);fauna.trees.forEach(r=>r.hp=0);player.inv=9999},target(){const r=rats[0];player.x=r.x-50;player.y=r.y;player.face=1;player.inv=9999;r.hp=10;r.stun=9999;return r}};`,
       }),

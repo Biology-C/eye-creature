@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global opening:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
@@ -27,7 +28,7 @@ const fs = require("node:fs"),
         r.fulfill({
           contentType: "application/javascript",
           body:
-            fs.readFileSync("src/game.js", "utf8") +
+            instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
             `
    window.opening={
     fresh(){reset();resume()},

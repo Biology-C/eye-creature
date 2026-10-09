@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const { chromium } = require("playwright");
@@ -28,7 +29,7 @@ const { chromium } = require("playwright");
         route.fulfill({
           contentType: "application/javascript",
           body:
-            fs.readFileSync("src/game.js", "utf8") +
+            instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
             `
 window.debugChecks={
   harm(){time+=3;hurt()}, save(){saveCheckpoint()}, fresh(){newAdventure()},

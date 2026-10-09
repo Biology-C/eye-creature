@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global gateTest:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
@@ -20,7 +21,7 @@ const fs = require("node:fs"),
         r.fulfill({
           contentType: "application/javascript",
           body:
-            fs.readFileSync("src/game.js", "utf8") +
+            instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
             `
  window.gateTest={update,render,reset,beginBoss,keys,world,physics,get b(){return boss},get p(){return player},get mode(){return mode},clock:()=>time,motion:v=>reduced=v,prepare(){reset();beginBoss();resume();player.inv=9999;boss.timer=999;},step(dt){update(dt);g.clearRect(0,0,canvas.width,canvas.height);drawBossEffects(g,boss,time,reduced)}};
  `,

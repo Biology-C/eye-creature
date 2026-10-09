@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global fx:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
@@ -21,7 +22,7 @@ const fs = require("node:fs"),
         r.fulfill({
           contentType: "application/javascript",
           body:
-            fs.readFileSync("src/game.js", "utf8") +
+            instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
             `
  window.fx={
  prepare(hp=2){reset();resume();rats.forEach(r=>r.hp=0);fauna.birds.forEach(r=>r.hp=0);fauna.trees.forEach(r=>r.hp=0);rewards.forEach(r=>r.got=true);Object.assign(player,{x:world.start.x+100,hp,inv:1e9});updateHud();healingFeedback.reset(hp)},

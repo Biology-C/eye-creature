@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global levelSnapshot:readonly, balance:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
@@ -16,7 +17,7 @@ const fs = require("node:fs"),
       r.fulfill({
         contentType: "application/javascript",
         body:
-          fs.readFileSync("src/game.js", "utf8") +
+          instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
           `
  window.balance={
  prepare(){reset();beginBoss();resume();boss.x=500;boss.timer=9999;boss.stun=9999;Object.assign(player,{x:300,y:world.arena.floor-11.01,vy:0,face:1,inv:9999,grounded:true,abilities:{spread:true}});rats.forEach(r=>{r.hp=0;r.split=!!r.big});fauna.birds.forEach(r=>r.hp=0);fauna.trees.forEach(r=>r.hp=0)},

@@ -1,3 +1,4 @@
+import { createState, resetState } from "./core/state.mjs";
 import { BALANCE as B } from "./config/balance.mjs";
 import {
   installRegionFeatures,
@@ -132,21 +133,19 @@ function resize() {
 resize();
 window.addEventListener("resize", () => {
   resize();
-  cameraSnap = true;
+  gameState.cameraSnap = true;
 });
 new ResizeObserver(() => {
   resize();
-  cameraSnap = true;
+  gameState.cameraSnap = true;
 }).observe(canvas.parentElement);
 const legacy = new URLSearchParams(location.search).has("legacy");
 const debugEnabled = new URLSearchParams(location.search).get("debug") === "1";
-let debug = null;
+
 const world = legacy ? buildMaze() : buildAdventure();
-let exploration = createExploration(world);
+
 const cues = createCues();
-let saveInfo = { status: "empty" },
-  nearLamp = null,
-  cameraSnap = true;
+
 world.mazeHeight = world.H;
 addSurfaceSpikes(world);
 removeSpikeShelters(world);
@@ -156,13 +155,20 @@ const { T, W, H, map } = world;
 const sceneMirrors = handheld ? createSceneMirrors(world) : [];
 const originalMap = map.map((row) => row.slice()),
   originalPlatforms = world.platforms.map((p) => ({ ...p }));
+const gameState = createState({
+  exploration: createExploration(world),
+  boss: createBoss(world),
+  magic: createMagic(),
+  reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+  lastSfxVolume: SFX_DEFAULT,
+});
 const physics = createPhysics(
   map,
   T,
   world.platforms,
   (x, y) =>
-    bossGateSolid(boss, x, y) ||
-    exploration.obstacles.some(
+    bossGateSolid(gameState.boss, x, y) ||
+    gameState.exploration.obstacles.some(
       (o) =>
         !o.broken &&
         x > o.x - o.w / 2 &&
@@ -172,89 +178,43 @@ const physics = createPhysics(
     ),
 );
 const solid = (x, y) =>
-  map[Math.floor(y / T)]?.[Math.floor(x / T)] !== 0 || bossGateSolid(boss, x, y);
-const keys = new Set(),
-  seen = new Set();
-let drawHero,
-  ratImage,
-  faunaImage,
-  faunaFrames = [],
-  enemyFrames = [],
-  mode = "loading",
-  time = 0,
-  last = 0,
-  camera = { x: 0, y: 0 },
-  light = false,
-  reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-let dashHits = new Set(),
-  boss = createBoss(world),
-  slashStyle = 0,
-  struck = new Set(),
-  hitStop = 0,
-  hurtUntil = 0,
-  magic = createMagic(),
-  dashTrail = [],
-  fauna,
-  player,
-  rats,
-  lights,
-  rewards,
-  torches,
-  crackedWalls,
-  pickupFlash,
-  checkpoint,
-  activated,
-  kills,
-  deaths,
-  // eslint-disable-next-line no-unused-vars -- Legacy notice timestamp retained without changing runtime assignments in this tooling pass.
-  noticeUntil = 0,
-  attackUntil = 0,
-  nextAttack = 0,
-  slash = null;
-let attackHeld = false,
-  chargeStart = null,
-  comboStage = 0,
-  comboUntil = 0,
-  comboQueue = 0,
-  breachHold = null,
-  breachConsumed = false;
-let clearTouch = () => {},
-  slimeHits = new Set();
+  map[Math.floor(y / T)]?.[Math.floor(x / T)] !== 0 || bossGateSolid(gameState.boss, x, y);
+
 const healingFeedback = createHealingFeedback(),
   paintBoss = createBossPainter();
 const guidance = createGuidance($("#notice"), handheld);
-let importantMessages = [];
+
 const messageCard = createMessageCard({
   handheld,
   onClose: () => {
-    if (importantMessages.length) {
-      messageCard.show(importantMessages.shift());
+    if (gameState.importantMessages.length) {
+      messageCard.show(gameState.importantMessages.shift());
       return;
     }
-    mode = "playing";
-    clearTouch();
-    keys.clear();
+    gameState.mode = "playing";
+    gameState.clearTouch();
+    gameState.keys.clear();
     cancelAttackInput();
-    last = 0;
+    gameState.last = 0;
     syncMusic();
     canvas.focus();
   },
 });
 function showImportantMessages() {
-  if (mode !== "playing" || !importantMessages.length) return;
-  mode = "reading";
-  clearTouch();
-  keys.clear();
+  if (gameState.mode !== "playing" || !gameState.importantMessages.length) return;
+  gameState.mode = "reading";
+  gameState.clearTouch();
+  gameState.keys.clear();
   cancelAttackInput();
   syncMusic();
-  messageCard.show(importantMessages.shift());
+  messageCard.show(gameState.importantMessages.shift());
 }
 const sfx = createSfx({ volume: SFX_DEFAULT });
 const combatSounds = createCombatSounds(sfx);
-let lastSfxVolume = SFX_DEFAULT;
+
 function setSfxVolume(value, persist = true) {
   if (!SFX_LEVELS.includes(value)) return;
-  if (value > 0) lastSfxVolume = value;
+  if (value > 0) gameState.lastSfxVolume = value;
   sfx.volume = value;
   sfx.muted = value === 0;
   cues.volume = value;
@@ -267,7 +227,6 @@ function setSfxVolume(value, persist = true) {
 setSfxVolume(readAudioLevel(SFX_KEY, SFX_LEVELS, SFX_DEFAULT, "eye-creature.sound-muted"), false);
 $("#sfx-volume").onchange = () => setSfxVolume(Number($("#sfx-volume").value) / 100);
 
-let musicInBackground = false;
 const music = createMusic({
   onChange: (state) => {
     const button = $("#music");
@@ -285,12 +244,12 @@ const music = createMusic({
 });
 function syncMusic() {
   music.setState(
-    musicScene(mode, boss),
-    musicInBackground ||
+    musicScene(gameState.mode, gameState.boss),
+    gameState.musicInBackground ||
       document.hidden ||
-      mode === "paused" ||
-      mode === "reading" ||
-      mode === "loading",
+      gameState.mode === "paused" ||
+      gameState.mode === "reading" ||
+      gameState.mode === "loading",
   );
 }
 $("#music").onclick = () => {
@@ -314,38 +273,38 @@ music.setVolume(readAudioLevel(MUSIC_KEY, MUSIC_LEVELS, MUSIC_VOLUME));
 function cancelAttackInput(preserveHit = false) {
   sfx.stopCharge();
   if (!preserveHit) combatSounds.clear();
-  breachHold = null;
-  breachConsumed = false;
-  attackHeld = false;
-  chargeStart = null;
-  comboStage = 0;
-  comboUntil = 0;
-  comboQueue = 0;
-  keys.delete("attack");
+  gameState.breachHold = null;
+  gameState.breachConsumed = false;
+  gameState.attackHeld = false;
+  gameState.chargeStart = null;
+  gameState.comboStage = 0;
+  gameState.comboUntil = 0;
+  gameState.comboQueue = 0;
+  gameState.keys.delete("attack");
 }
 function reset() {
   guidance.reset();
-  noticeUntil = 0;
+  gameState.noticeUntil = 0;
   messageCard.clear();
-  importantMessages = [];
+  gameState.importantMessages = [];
   music.clearDuck();
-  clearTouch();
-  exploration = createExploration(world);
-  cameraSnap = true;
-  nearLamp = null;
+  gameState.clearTouch();
+  gameState.exploration = createExploration(world);
+  gameState.cameraSnap = true;
+  gameState.nearLamp = null;
   cancelAttackInput();
-  dashHits.clear();
-  boss = createBoss(world);
-  struck.clear();
-  hitStop = 0;
-  hurtUntil = 0;
-  magic = createMagic();
-  dashTrail = [];
+  gameState.dashHits.clear();
+  gameState.boss = createBoss(world);
+  gameState.struck.clear();
+  gameState.hitStop = 0;
+  gameState.hurtUntil = 0;
+  gameState.magic = createMagic();
+  gameState.dashTrail = [];
   world.platforms.splice(0, world.platforms.length, ...originalPlatforms.map((p) => ({ ...p })));
   map.forEach((row, y) => row.splice(0, row.length, ...originalMap[y]));
-  fauna = createFauna(world);
-  crackedWalls = createCrackedWalls(world);
-  player = {
+  gameState.fauna = createFauna(world);
+  gameState.crackedWalls = createCrackedWalls(world);
+  gameState.player = {
     ...world.start,
     hp: MAX_HP,
     abilities: {},
@@ -359,34 +318,38 @@ function reset() {
     wing: MAX_WING,
     grounded: false,
   };
-  rats = [...world.rats, ...createPureSlimes(world), ...createBigSlimes(world)].map((r, i) => ({
-    ...r,
-    spawn: r.x,
-    y0: r.y,
-    face: i % 2 ? -1 : 1,
-    hp: r.big ? B.enemy.bigHp : r.pure ? B.enemy.slimeHp : B.enemy.ratHp,
-    surface: null,
-    state: "walk",
-    timer: 0,
-    stun: 0,
-    vy: 0,
-  }));
-  lights = world.lights.map((l) => ({ ...l, got: false }));
-  rewards = createRewards(world);
-  torches = createTorches(world);
-  pickupFlash = null;
-  checkpoint = { ...world.start };
-  activated = new Set();
-  kills = 0;
-  deaths = 0;
-  time = 0;
-  nextAttack = 0;
-  attackUntil = 0;
-  slash = null;
-  seen.clear();
-  keys.clear();
-  slimeHits.clear();
-  healingFeedback.reset(player.hp);
+  gameState.rats = [...world.rats, ...createPureSlimes(world), ...createBigSlimes(world)].map(
+    (r, i) => ({
+      ...r,
+      spawn: r.x,
+      y0: r.y,
+      face: i % 2 ? -1 : 1,
+      hp: r.big ? B.enemy.bigHp : r.pure ? B.enemy.slimeHp : B.enemy.ratHp,
+      surface: null,
+      state: "walk",
+      timer: 0,
+      stun: 0,
+      vy: 0,
+    }),
+  );
+  gameState.lights = world.lights.map((l) => ({ ...l, got: false }));
+  gameState.rewards = createRewards(world);
+  gameState.torches = createTorches(world);
+  gameState.pickupFlash = null;
+  gameState.checkpoint = { ...world.start };
+  gameState.activated = new Set();
+  resetState(gameState, {
+    kills: 0,
+    deaths: 0,
+    time: 0,
+    nextAttack: 0,
+    attackUntil: 0,
+    slash: null,
+  });
+  gameState.seen.clear();
+  gameState.keys.clear();
+  gameState.slimeHits.clear();
+  healingFeedback.reset(gameState.player.hp);
   updateHud();
   updateFormControls();
 }
@@ -404,41 +367,42 @@ function phoneText(message) {
         .replaceAll("用 Q 或左側鏡子破解", "靠近左側鏡子破解");
 }
 function say(message, duration = B.guidance.duration) {
-  guidance.say(phoneText(message), time, duration);
-  noticeUntil = guidance.until;
+  guidance.say(phoneText(message), gameState.time, duration);
+  gameState.noticeUntil = guidance.until;
 }
 function updateHud() {
-  healingFeedback.observe(player.hp, time);
+  healingFeedback.observe(gameState.player.hp, gameState.time);
   $("#abilities").textContent =
     "能力：" +
     (["spread", "dash", "breach"]
-      .filter((k) => player.abilities[k])
+      .filter((k) => gameState.player.abilities[k])
       .map((k) => ({ spread: "三向光彈", dash: "傷害衝刺", breach: "普通牆破壞" })[k])
       .join("／") || "尚未取得");
-  $("#energy").textContent = `${handheld ? "破牆" : "破牆能量"} ${player.energy} / ${BREACH_COST}`;
-  $("#hearts").innerHTML = healthMarkup(player.hp);
-  $("#healing").textContent = `綠能回血 ${player.healCharge}% / 100%`;
-  $("#hearts").setAttribute("aria-label", `生命 ${player.hp} / ${MAX_HP}`);
+  $("#energy").textContent =
+    `${handheld ? "破牆" : "破牆能量"} ${gameState.player.energy} / ${BREACH_COST}`;
+  $("#hearts").innerHTML = healthMarkup(gameState.player.hp);
+  $("#healing").textContent = `綠能回血 ${gameState.player.healCharge}% / 100%`;
+  $("#hearts").setAttribute("aria-label", `生命 ${gameState.player.hp} / ${MAX_HP}`);
   $("#quest").textContent =
-    `${handheld ? "光點" : "引路光點"} ${lights.filter((p) => p.got).length} / 3`;
+    `${handheld ? "光點" : "引路光點"} ${gameState.lights.filter((p) => p.got).length} / 3`;
   $("#relics").textContent =
-    `藏品 ${rewards.filter((r) => r.kind === "relic" && r.got).length} / ${rewards.filter((r) => r.kind === "relic").length}`;
+    `藏品 ${gameState.rewards.filter((r) => r.kind === "relic" && r.got).length} / ${gameState.rewards.filter((r) => r.kind === "relic").length}`;
 }
 function panel(title, description, label) {
-  $("#map-panel").hidden = !handheld || mode !== "paused";
-  if (handheld && mode === "paused") drawJourneyMap();
-  $("#pause-details").hidden = mode !== "paused";
+  $("#map-panel").hidden = !handheld || gameState.mode !== "paused";
+  if (handheld && gameState.mode === "paused") drawJourneyMap();
+  $("#pause-details").hidden = gameState.mode !== "paused";
   $("#continue").hidden = true;
   $("#title").textContent = title;
   $("#description").textContent = description;
   $("#start").textContent = label;
   $("#overlay").hidden = false;
-  $("#restart").hidden = mode !== "paused";
+  $("#restart").hidden = gameState.mode !== "paused";
 }
 function refreshMemories() {
   const list = $("#memories");
   list.replaceChildren();
-  for (const e of exploration.echoes) {
+  for (const e of gameState.exploration.echoes) {
     const li = document.createElement("li");
     li.textContent = e.got ? e.text : "尚未找到的殘響";
     list.append(li);
@@ -446,31 +410,35 @@ function refreshMemories() {
 }
 function pause() {
   refreshMemories();
-  if (mode === "playing") {
-    mode = "paused";
+  if (gameState.mode === "playing") {
+    gameState.mode = "paused";
     syncMusic();
-    clearTouch();
-    keys.clear();
+    gameState.clearTouch();
+    gameState.keys.clear();
     cancelAttackInput();
     $("#save-status").textContent = "重新整理會回到最近休息燈；繼續探索保留目前進度。";
     panel("休息一下", "探索進度保留，準備好再繼續。", "繼續探索");
-  } else if (mode === "paused") resume();
+  } else if (gameState.mode === "paused") resume();
 }
 function resume() {
   if (messageCard.active) return;
   sfx.unlock();
   sfx.loadSample("breakWall", new URL("../assets/sfx/wall-break.wav", import.meta.url));
   cues.unlock();
-  mode = "playing";
-  musicInBackground = false;
+  gameState.mode = "playing";
+  gameState.musicInBackground = false;
   syncMusic();
   music.unlock();
   $("#overlay").hidden = true;
-  last = 0;
+  gameState.last = 0;
   canvas.focus();
 }
 function newAdventure() {
-  if (!legacy && saveInfo.status !== "empty" && !confirm("開始新冒險會覆蓋休息燈存檔。確定嗎？"))
+  if (
+    !legacy &&
+    gameState.saveInfo.status !== "empty" &&
+    !confirm("開始新冒險會覆蓋休息燈存檔。確定嗎？")
+  )
     return;
   try {
     if (!legacy && !debugEnabled) localStorage.removeItem(SAVE_KEY);
@@ -478,17 +446,20 @@ function newAdventure() {
     say("無法清除舊存檔；本次遊戲仍可繼續。");
   }
   reset();
-  saveInfo = { status: "empty" };
+  gameState.saveInfo = { status: "empty" };
   $("#continue").hidden = true;
   resume();
 }
 $("#start").onclick = () => {
-  if (mode === "won" || (mode === "intro" && saveInfo.status !== "empty")) {
+  if (
+    gameState.mode === "won" ||
+    (gameState.mode === "intro" && gameState.saveInfo.status !== "empty")
+  ) {
     newAdventure();
     return;
   }
-  if (new URLSearchParams(location.search).has("boss-preview") && !boss.active) {
-    lights.forEach((l) => (l.got = true));
+  if (new URLSearchParams(location.search).has("boss-preview") && !gameState.boss.active) {
+    gameState.lights.forEach((l) => (l.got = true));
     beginBoss();
   }
   resume();
@@ -496,77 +467,85 @@ $("#start").onclick = () => {
 };
 $("#restart").onclick = newAdventure;
 $("#pause").onclick = pause;
-$("#sound").onclick = () => setSfxVolume(sfx.muted ? lastSfxVolume : 0);
+$("#sound").onclick = () => setSfxVolume(sfx.muted ? gameState.lastSfxVolume : 0);
 $("#continue").onclick = () => {
-  if (saveInfo.status === "ready" && restoreCheckpoint(saveInfo.data)) resume();
+  if (gameState.saveInfo.status === "ready" && restoreCheckpoint(gameState.saveInfo.data)) resume();
 };
 $("#theme").onclick = () => {
-  light = !light;
-  document.body.classList.toggle("light", light);
-  $("#theme").textContent = light ? "深色" : "淺色";
-  if (mode === "playing") canvas.focus();
+  gameState.light = !gameState.light;
+  document.body.classList.toggle("light", gameState.light);
+  $("#theme").textContent = gameState.light ? "深色" : "淺色";
+  if (gameState.mode === "playing") canvas.focus();
 };
 function motionLabel() {
-  $("#motion").setAttribute("aria-pressed", reduced);
-  $("#motion").textContent = reduced ? "減少動態：開" : "減少動態：關";
+  $("#motion").setAttribute("aria-pressed", gameState.reduced);
+  $("#motion").textContent = gameState.reduced ? "減少動態：開" : "減少動態：關";
 }
 motionLabel();
 $("#motion").onclick = () => {
-  reduced = !reduced;
+  gameState.reduced = !gameState.reduced;
   motionLabel();
-  if (mode === "playing") canvas.focus();
+  if (gameState.mode === "playing") canvas.focus();
 };
 $("#slash-style").onclick = () => {
-  slashStyle = (slashStyle + 1) % 3;
-  $("#slash-style").textContent = "斬擊：" + SLASH_STYLES[slashStyle];
-  if (mode === "playing") canvas.focus();
+  gameState.slashStyle = (gameState.slashStyle + 1) % 3;
+  $("#slash-style").textContent = "斬擊：" + SLASH_STYLES[gameState.slashStyle];
+  if (gameState.mode === "playing") canvas.focus();
 };
 $("#hint").onclick = () => {
-  if (mode !== "playing") return;
+  if (gameState.mode !== "playing") return;
   canvas.focus();
-  const wall = nearestCrack(player, crackedWalls);
-  if (!boss.active && !crackedWalls.some((w) => w.broken) && wall) {
-    guidance.say("跟著箭頭尋找裂牆。", time, 6, { target: wall, kind: "reminder" });
+  const wall = nearestCrack(gameState.player, gameState.crackedWalls);
+  if (!gameState.boss.active && !gameState.crackedWalls.some((w) => w.broken) && wall) {
+    guidance.say("跟著箭頭尋找裂牆。", gameState.time, 6, { target: wall, kind: "reminder" });
     return;
   }
-  const remaining = lights.filter((l) => !l.got),
+  const remaining = gameState.lights.filter((l) => !l.got),
     target = remaining.length
       ? remaining.sort(
           (a, b) =>
-            Math.hypot(a.x - player.x, a.y - player.y) - Math.hypot(b.x - player.x, b.y - player.y),
+            Math.hypot(a.x - gameState.player.x, a.y - gameState.player.y) -
+            Math.hypot(b.x - gameState.player.x, b.y - gameState.player.y),
         )[0]
       : world.exit;
-  const dx = target.x - player.x,
-    dy = target.y - player.y;
+  const dx = target.x - gameState.player.x,
+    dy = target.y - gameState.player.y;
   say(
     `${remaining.length ? "光點" : "出口"}訊號大約在${Math.abs(dy) > 100 ? (dy < 0 ? "北" : "南") : ""}${Math.abs(dx) > 100 ? (dx < 0 ? "西" : "東") : ""}方。牆後可能要繞路。`,
     6,
   );
 };
 $("#sense-direction").onclick = () => {
-  if (mode === "paused") {
+  if (gameState.mode === "paused") {
     resume();
     $("#hint").click();
   }
 };
 function wallTarget(touch = false) {
-  if (player.slimeForm) return null;
-  const direction = keys.has("down") ? "down" : keys.has(touch ? "lookUp" : "up") ? "up" : null;
-  return nearbyWall(player, crackedWalls, direction) || ordinaryWall(player, world, direction);
+  if (gameState.player.slimeForm) return null;
+  const direction = gameState.keys.has("down")
+    ? "down"
+    : gameState.keys.has(touch ? "lookUp" : "up")
+      ? "up"
+      : null;
+  return (
+    nearbyWall(gameState.player, gameState.crackedWalls, direction) ||
+    ordinaryWall(gameState.player, world, direction)
+  );
 }
 function performBreach(wall) {
-  if (!breakWall(player, wall, map, T, world.platforms)) return false;
-  if (wall.ordinary) crackedWalls.push(wall);
+  if (!breakWall(gameState.player, wall, map, T, world.platforms)) return false;
+  if (wall.ordinary) gameState.crackedWalls.push(wall);
   wall.discovered = true;
-  wall.changedAt = time;
-  syncWinds(exploration, crackedWalls);
+  wall.changedAt = gameState.time;
+  syncWinds(gameState.exploration, gameState.crackedWalls);
   if (!sfx.play("breakWall")) cues.play("break");
   updateHud();
-  learn(exploration, "breach", "gaze", "energy-ready");
+  learn(gameState.exploration, "breach", "gaze", "energy-ready");
   return true;
 }
 function breach() {
-  if (mode !== "playing" || player.slimeForm) return;
+  if (gameState.mode !== "playing" || gameState.player.slimeForm) return;
   canvas.focus();
   const wall = wallTarget();
   if (!wall) {
@@ -574,19 +553,22 @@ function breach() {
     return;
   }
   if (!performBreach(wall))
-    say(`還需要 ${BREACH_COST - player.energy} 橘色能量（${player.energy}/${BREACH_COST}）。`, 3);
+    say(
+      `還需要 ${BREACH_COST - gameState.player.energy} 橘色能量（${gameState.player.energy}/${BREACH_COST}）。`,
+      3,
+    );
 }
 $("#breach").onclick = breach;
 function mirror() {
-  if (mode !== "playing") return;
-  if (boss.cursed) {
+  if (gameState.mode !== "playing") return;
+  if (gameState.boss.cursed) {
     say("史萊姆無法施法；等紅熊重踏後，拾取掉落的鏡子。", 4);
     return;
   }
   canvas.focus();
-  const count = mirrorFauna(fauna, player, time, clearPath);
+  const count = mirrorFauna(gameState.fauna, gameState.player, gameState.time, clearPath);
   if (count > 0) {
-    learn(exploration, "bird");
+    learn(gameState.exploration, "bird");
     sfx.play("mirror");
   }
   if (count >= 0)
@@ -597,20 +579,20 @@ function mirror() {
 }
 $("#mirror").onclick = mirror;
 function dash() {
-  if (mode !== "playing" || player.slimeForm) return;
+  if (gameState.mode !== "playing" || gameState.player.slimeForm) return;
   canvas.focus();
-  const direction = Number(keys.has("right")) - Number(keys.has("left"));
-  if (direction) player.face = direction;
-  if (startDash(player)) {
-    learn(exploration, "dash");
-    dashHits.clear();
+  const direction = Number(gameState.keys.has("right")) - Number(gameState.keys.has("left"));
+  if (direction) gameState.player.face = direction;
+  if (startDash(gameState.player)) {
+    learn(gameState.exploration, "dash");
+    gameState.dashHits.clear();
     sfx.play("dash");
   }
 }
 $("#dash").onclick = dash;
 function lightMagic() {
-  if (mode !== "playing") return;
-  if (player.slimeForm) {
+  if (gameState.mode !== "playing") return;
+  if (gameState.player.slimeForm) {
     say("史萊姆形態：跳躍與跳撞，拾取鏡子後恢復魔法。", 3);
     return;
   }
@@ -619,11 +601,11 @@ function lightMagic() {
 }
 $("#magic").onclick = lightMagic;
 $("#select").onclick = () => {
-  if (mode === "playing") pause();
-  else if (mode === "paused") resume();
+  if (gameState.mode === "playing") pause();
+  else if (gameState.mode === "paused") resume();
 };
 $("#handheld-start").onclick = () => {
-  if (mode === "intro" || mode === "won") $("#start").click();
+  if (gameState.mode === "intro" || gameState.mode === "won") $("#start").click();
   else pause();
 };
 if (handheld) {
@@ -670,9 +652,9 @@ window.addEventListener("keydown", (e) => {
   const k = keyMap[e.key];
   if (k) {
     e.preventDefault();
-    if (mode === "playing") {
+    if (gameState.mode === "playing") {
       if (k === "attack" && !e.repeat) pressAttack();
-      keys.add(k);
+      gameState.keys.add(k);
     }
   }
   if (e.key.toLowerCase() === "p" && !e.repeat) pause();
@@ -680,7 +662,7 @@ window.addEventListener("keydown", (e) => {
 window.addEventListener("keyup", (e) => {
   const k = keyMap[e.key];
   if (k) {
-    keys.delete(k);
+    gameState.keys.delete(k);
     if (k === "attack") releaseAttack();
   }
 });
@@ -688,24 +670,24 @@ const touchKeys = new Map();
 function touchKey(k) {
   return k === "flap" ? "up" : handheld && k === "up" ? "lookUp" : k;
 }
-clearTouch = bindTouchControls($(".touch"), {
-  playing: () => mode === "playing",
+gameState.clearTouch = bindTouchControls($(".touch"), {
+  playing: () => gameState.mode === "playing",
   down: (k) => {
     const key = touchKey(k);
     touchKeys.set(k, key);
-    keys.add(key);
+    gameState.keys.add(key);
     if (k === "attack") pressAttack(handheld);
   },
   up: (k) => {
     const key = touchKeys.get(k);
     touchKeys.delete(k);
-    if (![...touchKeys.values()].includes(key)) keys.delete(key);
+    if (![...touchKeys.values()].includes(key)) gameState.keys.delete(key);
     if (k === "attack") releaseAttack();
   },
   cancel: (k) => {
     const key = touchKeys.get(k);
     touchKeys.delete(k);
-    if (![...touchKeys.values()].includes(key)) keys.delete(key);
+    if (![...touchKeys.values()].includes(key)) gameState.keys.delete(key);
     if (k === "attack") cancelAttackInput();
   },
 });
@@ -718,18 +700,18 @@ if (handheld) {
   $(".touch").oncontextmenu = (e) => e.preventDefault();
 }
 window.addEventListener("blur", () => {
-  musicInBackground = true;
-  keys.clear();
-  if (mode === "playing") pause();
+  gameState.musicInBackground = true;
+  gameState.keys.clear();
+  if (gameState.mode === "playing") pause();
   syncMusic();
 });
 window.addEventListener("focus", () => {
-  musicInBackground = false;
+  gameState.musicInBackground = false;
   syncMusic();
 });
 document.addEventListener("visibilitychange", () => {
-  musicInBackground = document.hidden;
-  if (document.hidden && mode === "playing") pause();
+  gameState.musicInBackground = document.hidden;
+  if (document.hidden && gameState.mode === "playing") pause();
   syncMusic();
 });
 function free(x, y, r = 11) {
@@ -750,13 +732,13 @@ function move(o, dx, dy) {
 }
 function clearPath(ax, ay, bx, by) {
   const n = Math.ceil(Math.hypot(bx - ax, by - ay) / 6),
-    target = exploration.obstacles.find((o) => o.x === bx && o.y === by);
+    target = gameState.exploration.obstacles.find((o) => o.x === bx && o.y === by);
   for (let i = 0; i <= n; i++) {
     const x = ax + ((bx - ax) * i) / Math.max(1, n),
       y = ay + ((by - ay) * i) / Math.max(1, n);
     if (
       solid(x, y) ||
-      exploration.obstacles.some(
+      gameState.exploration.obstacles.some(
         (o) =>
           o !== target &&
           !o.broken &&
@@ -771,271 +753,318 @@ function clearPath(ax, ay, bx, by) {
   return true;
 }
 function impact(e, damage = B.enemy.contactDamage) {
-  magic.effects.push({ x: e.x, y: e.y, kind: "melee", damage, until: time + 0.24 });
-  hitStop = Math.max(hitStop, B.attack.hitStop);
+  gameState.magic.effects.push({
+    x: e.x,
+    y: e.y,
+    kind: "melee",
+    damage,
+    until: gameState.time + 0.24,
+  });
+  gameState.hitStop = Math.max(gameState.hitStop, B.attack.hitStop);
 }
 function enemyDamageSound(e, before) {
-  if (e === boss) markBossHit(boss, before, time);
+  if (e === gameState.boss) markBossHit(gameState.boss, before, gameState.time);
   combatSounds.damaged(e, before, {
-    boss: e === boss,
-    crystalRat: rats.includes(e) && !e.pure && !e.big,
+    boss: e === gameState.boss,
+    crystalRat: gameState.rats.includes(e) && !e.pure && !e.big,
   });
 }
 function applyMelee() {
   const targets = [
-    ...rats,
-    ...exploration.obstacles,
-    ...fauna.trees,
-    ...fauna.birds,
-    ...(boss.active ? [boss] : []),
-  ].filter((e) => !struck.has(e) && inMelee(slash, e, clearPath));
+    ...gameState.rats,
+    ...gameState.exploration.obstacles,
+    ...gameState.fauna.trees,
+    ...gameState.fauna.birds,
+    ...(gameState.boss.active ? [gameState.boss] : []),
+  ].filter((e) => !gameState.struck.has(e) && inMelee(gameState.slash, e, clearPath));
   const hpBefore = new Map(
-    targets.filter((e) => !exploration.obstacles.includes(e)).map((e) => [e, e.hp]),
+    targets.filter((e) => !gameState.exploration.obstacles.includes(e)).map((e) => [e, e.hp]),
   );
   for (const e of targets) {
-    struck.add(e);
-    if (exploration.obstacles.includes(e)) {
-      if (hitObstacle(e, slash.stage)) {
-        learn(exploration, "root");
-        e.changedAt = time;
+    gameState.struck.add(e);
+    if (gameState.exploration.obstacles.includes(e)) {
+      if (hitObstacle(e, gameState.slash.stage)) {
+        learn(gameState.exploration, "root");
+        e.changedAt = gameState.time;
         cues.play("break");
       }
       continue;
     }
     impact(e);
-    hitStop = Math.max(hitStop, B.attack.meleeHitStops[(slash.stage || 1) - 1]);
-    if (e === boss) {
-      boss.hp = Math.max(0, boss.hp - B.attack.meleeDamage[(slash.stage || 1) - 1]);
-      boss.stun = time + B.attack.bossMeleeStun;
-      if (!boss.hp) {
-        kills++;
-        boss.cursed = false;
+    gameState.hitStop = Math.max(
+      gameState.hitStop,
+      B.attack.meleeHitStops[(gameState.slash.stage || 1) - 1],
+    );
+    if (e === gameState.boss) {
+      gameState.boss.hp = Math.max(
+        0,
+        gameState.boss.hp - B.attack.meleeDamage[(gameState.slash.stage || 1) - 1],
+      );
+      gameState.boss.stun = gameState.time + B.attack.bossMeleeStun;
+      if (!gameState.boss.hp) {
+        gameState.kills++;
+        gameState.boss.cursed = false;
         say("紅熊倒下！走向右側出口。", 5);
       }
     }
   }
-  const hit = meleeFauna(fauna, slash, time, clearPath, targets);
-  kills += hit.killed;
-  syncStumps(world.platforms, fauna.trees);
-  for (const r of rats.filter((e) => targets.includes(e))) {
-    r.hp = Math.max(0, r.hp - B.attack.meleeDamage[(slash.stage || 1) - 1]);
+  const hit = meleeFauna(gameState.fauna, gameState.slash, gameState.time, clearPath, targets);
+  gameState.kills += hit.killed;
+  syncStumps(world.platforms, gameState.fauna.trees);
+  for (const r of gameState.rats.filter((e) => targets.includes(e))) {
+    r.hp = Math.max(0, r.hp - B.attack.meleeDamage[(gameState.slash.stage || 1) - 1]);
     r.state = "rest";
     r.timer = B.attack.enemyHitRest;
-    r.stun = time + B.attack.enemyStun;
-    if (!r.hp) kills++;
+    r.stun = gameState.time + B.attack.enemyStun;
+    if (!r.hp) gameState.kills++;
   }
   for (const [e, hp] of hpBefore) enemyDamageSound(e, hp);
 }
 function attack(stage = 1) {
-  if (player.slimeForm) {
+  if (gameState.player.slimeForm) {
     slimeAttack();
     return;
   }
-  learn(exploration, "rat");
-  nextAttack = time + B.attack.meleeCooldown;
-  attackUntil = time + B.attack.meleeDuration;
-  slash = { x: player.x, y: player.y, face: player.face, stage };
-  struck.clear();
+  learn(gameState.exploration, "rat");
+  gameState.nextAttack = gameState.time + B.attack.meleeCooldown;
+  gameState.attackUntil = gameState.time + B.attack.meleeDuration;
+  gameState.slash = {
+    x: gameState.player.x,
+    y: gameState.player.y,
+    face: gameState.player.face,
+    stage,
+  };
+  gameState.struck.clear();
   applyMelee();
-  if (!player.slimeForm) sfx.play("slash" + stage);
+  if (!gameState.player.slimeForm) sfx.play("slash" + stage);
 }
 function nearEnemy() {
   return [
-    ...exploration.obstacles,
-    ...rats,
-    ...fauna.trees,
-    ...fauna.birds,
-    ...(boss.active ? [boss] : []),
-  ].some((e) => inMelee(player, e, clearPath));
+    ...gameState.exploration.obstacles,
+    ...gameState.rats,
+    ...gameState.fauna.trees,
+    ...gameState.fauna.birds,
+    ...(gameState.boss.active ? [gameState.boss] : []),
+  ].some((e) => inMelee(gameState.player, e, clearPath));
 }
 function nextCombo() {
-  comboStage = time <= comboUntil ? (comboStage % 3) + 1 : 1;
-  comboUntil = time + B.attack.comboWindow;
-  attack(comboStage);
+  gameState.comboStage =
+    gameState.time <= gameState.comboUntil ? (gameState.comboStage % 3) + 1 : 1;
+  gameState.comboUntil = gameState.time + B.attack.comboWindow;
+  attack(gameState.comboStage);
 }
 function pressAttack(touch = false) {
-  if (mode !== "playing" || attackHeld) return;
-  attackHeld = true;
-  if (player.slimeForm) {
+  if (gameState.mode !== "playing" || gameState.attackHeld) return;
+  gameState.attackHeld = true;
+  if (gameState.player.slimeForm) {
     slimeAttack();
     return;
   }
-  if (touch && handheld && !nearEnemy() && wallTarget(true) && player.energy < BREACH_COST)
-    say(`還需要 ${BREACH_COST - player.energy} 橘色能量（${player.energy}/${BREACH_COST}）。`, 3);
+  if (
+    touch &&
+    handheld &&
+    !nearEnemy() &&
+    wallTarget(true) &&
+    gameState.player.energy < BREACH_COST
+  )
+    say(
+      `還需要 ${BREACH_COST - gameState.player.energy} 橘色能量（${gameState.player.energy}/${BREACH_COST}）。`,
+      3,
+    );
   if (
     touch &&
     handheld &&
     attackIntent({
       melee: nearEnemy(),
-      combo: comboStage && time <= comboUntil,
+      combo: gameState.comboStage && gameState.time <= gameState.comboUntil,
       wall: wallTarget(true),
-      energy: player.energy,
+      energy: gameState.player.energy,
       cost: BREACH_COST,
     }) === "breach"
   ) {
-    breachHold = { id: wallTarget(true).id, start: time };
-    breachConsumed = false;
-    chargeStart = null;
+    gameState.breachHold = { id: wallTarget(true).id, start: gameState.time };
+    gameState.breachConsumed = false;
+    gameState.chargeStart = null;
     sfx.stopCharge();
     return;
   }
-  if (nearEnemy() || (comboStage && time <= comboUntil)) {
-    if (time >= nextAttack) nextCombo();
-    else comboQueue = Math.min(B.attack.comboBuffer, comboQueue + 1);
+  if (nearEnemy() || (gameState.comboStage && gameState.time <= gameState.comboUntil)) {
+    if (gameState.time >= gameState.nextAttack) nextCombo();
+    else gameState.comboQueue = Math.min(B.attack.comboBuffer, gameState.comboQueue + 1);
   }
   // Charging is an input action, not a shot: it can start during cooldown.
   // castLight still enforces the firing cooldown when the key is released.
-  else chargeStart = time;
+  else gameState.chargeStart = gameState.time;
 }
 function fireLight(charged = false) {
-  if (player.slimeForm) return false;
-  const fired = castLight(magic, player, time, charged);
+  if (gameState.player.slimeForm) return false;
+  const fired = castLight(gameState.magic, gameState.player, gameState.time, charged);
   if (fired) {
-    if (charged) learn(exploration, "charge");
+    if (charged) learn(gameState.exploration, "charge");
     sfx.play(charged ? "chargedShot" : "shot");
   }
   return fired;
 }
 function syncChargeSound() {
   const on =
-    mode === "playing" &&
-    player &&
-    !player.slimeForm &&
-    chargeStart !== null &&
-    time - chargeStart >= B.attack.chargeSoundDelay;
-  if (on) sfx.startCharge(time - chargeStart, B.attack.chargeTime);
+    gameState.mode === "playing" &&
+    gameState.player &&
+    !gameState.player.slimeForm &&
+    gameState.chargeStart !== null &&
+    gameState.time - gameState.chargeStart >= B.attack.chargeSoundDelay;
+  if (on) sfx.startCharge(gameState.time - gameState.chargeStart, B.attack.chargeTime);
   else sfx.stopCharge();
 }
 function releaseAttack() {
   sfx.stopCharge();
-  if (!attackHeld) return;
-  attackHeld = false;
-  if (breachHold || breachConsumed) {
-    const quick = breachHold && !breachConsumed;
-    breachHold = null;
-    breachConsumed = false;
-    if (quick && mode === "playing" && fireLight(false)) nextAttack = time + B.attack.lightCooldown;
+  if (!gameState.attackHeld) return;
+  gameState.attackHeld = false;
+  if (gameState.breachHold || gameState.breachConsumed) {
+    const quick = gameState.breachHold && !gameState.breachConsumed;
+    gameState.breachHold = null;
+    gameState.breachConsumed = false;
+    if (quick && gameState.mode === "playing" && fireLight(false))
+      gameState.nextAttack = gameState.time + B.attack.lightCooldown;
     return;
   }
-  if (mode === "playing" && chargeStart !== null) {
-    if (fireLight(time - chargeStart >= B.attack.chargeTime))
-      nextAttack = time + B.attack.lightCooldown;
+  if (gameState.mode === "playing" && gameState.chargeStart !== null) {
+    if (fireLight(gameState.time - gameState.chargeStart >= B.attack.chargeTime))
+      gameState.nextAttack = gameState.time + B.attack.lightCooldown;
   }
-  chargeStart = null;
+  gameState.chargeStart = null;
 }
 // eslint-disable-next-line no-unused-vars -- Invoked by the browser regression harness appended to this module.
 function autoAttack() {
-  if (player.slimeForm) {
+  if (gameState.player.slimeForm) {
     slimeAttack();
     return;
   }
   if (nearEnemy()) attack();
-  else if (fireLight(false)) nextAttack = time + B.attack.lightCooldown;
+  else if (fireLight(false)) gameState.nextAttack = gameState.time + B.attack.lightCooldown;
 }
 function syncForm() {
-  if (!setSlimeForm(player, boss.active && boss.hp > 0 && boss.cursed)) return;
-  clearTouch();
-  keys.clear();
+  if (
+    !setSlimeForm(
+      gameState.player,
+      gameState.boss.active && gameState.boss.hp > 0 && gameState.boss.cursed,
+    )
+  )
+    return;
+  gameState.clearTouch();
+  gameState.keys.clear();
   cancelAttackInput(true);
-  if (player.slimeForm) sfx.play("curse");
-  attackUntil = 0;
-  slash = null;
-  magic.shots = [];
-  dashTrail = [];
-  slimeHits.clear();
-  if (!player.slimeForm) {
-    player.bodyRadius = undefined;
-    player.wing = MAX_WING;
+  if (gameState.player.slimeForm) sfx.play("curse");
+  gameState.attackUntil = 0;
+  gameState.slash = null;
+  gameState.magic.shots = [];
+  gameState.dashTrail = [];
+  gameState.slimeHits.clear();
+  if (!gameState.player.slimeForm) {
+    gameState.player.bodyRadius = undefined;
+    gameState.player.wing = MAX_WING;
   }
   updateFormControls();
 }
 function updateFormControls() {
   if (handheld) {
-    $("#flap").innerHTML = player.slimeForm ? "B<small>跳躍／攀附</small>" : "B<small>拍翼</small>";
-    $("#flap").setAttribute("aria-label", player.slimeForm ? "B 跳躍或攀附" : "B 拍翼或滑翔");
-    $("#dash").disabled = Boolean(player.slimeForm);
-    $("#dash").innerHTML = player.slimeForm ? "X<small>變身中</small>" : "X<small>衝刺</small>";
-  } else $("#dash").textContent = player.slimeForm ? "史萊姆無衝刺" : "衝刺 Shift";
+    $("#flap").innerHTML = gameState.player.slimeForm
+      ? "B<small>跳躍／攀附</small>"
+      : "B<small>拍翼</small>";
+    $("#flap").setAttribute(
+      "aria-label",
+      gameState.player.slimeForm ? "B 跳躍或攀附" : "B 拍翼或滑翔",
+    );
+    $("#dash").disabled = Boolean(gameState.player.slimeForm);
+    $("#dash").innerHTML = gameState.player.slimeForm
+      ? "X<small>變身中</small>"
+      : "X<small>衝刺</small>";
+  } else $("#dash").textContent = gameState.player.slimeForm ? "史萊姆無衝刺" : "衝刺 Shift";
 }
 function slimeAttack() {
-  if (startSlimeAttack(player)) {
-    slimeHits.clear();
-    nextAttack = time + B.player.slimeAttackCooldown;
+  if (startSlimeAttack(gameState.player)) {
+    gameState.slimeHits.clear();
+    gameState.nextAttack = gameState.time + B.player.slimeAttackCooldown;
   }
 }
 function applySlimeHit() {
-  if (!player.slimeForm || player.slimeAttack <= 0) return;
-  for (const e of [...rats, ...(boss.active ? [boss] : [])]) {
+  if (!gameState.player.slimeForm || gameState.player.slimeAttack <= 0) return;
+  for (const e of [...gameState.rats, ...(gameState.boss.active ? [gameState.boss] : [])]) {
     if (
       !e.hp ||
-      slimeHits.has(e) ||
-      Math.abs(e.x - player.x) > (e.radiusX || 14) + 20 ||
-      Math.abs(e.y - player.y) > (e.radiusY || 14) + 16 ||
-      !clearPath(player.x, player.y, e.x, e.y)
+      gameState.slimeHits.has(e) ||
+      Math.abs(e.x - gameState.player.x) > (e.radiusX || 14) + 20 ||
+      Math.abs(e.y - gameState.player.y) > (e.radiusY || 14) + 16 ||
+      !clearPath(gameState.player.x, gameState.player.y, e.x, e.y)
     )
       continue;
-    slimeHits.add(e);
+    gameState.slimeHits.add(e);
     impact(e);
     const beforeHp = e.hp;
     e.hp = Math.max(0, e.hp - B.attack.slimeDamage);
     enemyDamageSound(e, beforeHp);
-    e.stun = time + B.attack.enemyStun;
-    if (e !== boss) {
+    e.stun = gameState.time + B.attack.enemyStun;
+    if (e !== gameState.boss) {
       e.state = "rest";
       e.timer = B.attack.enemyHitRest;
     }
-    if (!e.hp) kills++;
+    if (!e.hp) gameState.kills++;
   }
 }
 function finishBoss() {
-  if (!boss.active || boss.hp > 0) return;
-  boss.cursed = false;
-  boss.shots = [];
-  boss.mirrors = [];
-  boss.recovery = null;
-  rats = rats.filter((r) => !r.bossMinion);
+  if (!gameState.boss.active || gameState.boss.hp > 0) return;
+  gameState.boss.cursed = false;
+  gameState.boss.shots = [];
+  gameState.boss.mirrors = [];
+  gameState.boss.recovery = null;
+  gameState.rats = gameState.rats.filter((r) => !r.bossMinion);
   syncForm();
 }
 // eslint-disable-next-line no-unused-vars -- Existing damage-source call signature retained; quiet HUD no longer displays this label.
 function hurt(source = "老鼠", damage = B.enemy.contactDamage) {
-  if (debug?.invincible) return;
-  if (time < player.inv) return;
-  const beforeHp = player.hp;
-  if (breachHold) {
-    breachHold = null;
-    breachConsumed = true;
+  if (gameState.debug?.invincible) return;
+  if (gameState.time < gameState.player.inv) return;
+  const beforeHp = gameState.player.hp;
+  if (gameState.breachHold) {
+    gameState.breachHold = null;
+    gameState.breachConsumed = true;
   }
-  hurtUntil = time + 0.35;
-  hitStop = Math.max(hitStop, 0.07);
-  magic.effects.push({ x: player.x, y: player.y, kind: "hurt", damage, until: time + 0.24 });
-  player.hp = Math.max(0, player.hp - damage);
-  if (player.hp < beforeHp) sfx.play(player.hp === 0 ? "death" : "hurt");
-  player.inv = time + B.player.invulnerability;
+  gameState.hurtUntil = gameState.time + 0.35;
+  gameState.hitStop = Math.max(gameState.hitStop, 0.07);
+  gameState.magic.effects.push({
+    x: gameState.player.x,
+    y: gameState.player.y,
+    kind: "hurt",
+    damage,
+    until: gameState.time + 0.24,
+  });
+  gameState.player.hp = Math.max(0, gameState.player.hp - damage);
+  if (gameState.player.hp < beforeHp) sfx.play(gameState.player.hp === 0 ? "death" : "hurt");
+  gameState.player.inv = gameState.time + B.player.invulnerability;
   updateHud();
-  if (player.hp <= 0) {
-    clearTouch();
-    deaths++;
-    cameraSnap = true;
-    nearLamp = null;
+  if (gameState.player.hp <= 0) {
+    gameState.clearTouch();
+    gameState.deaths++;
+    gameState.cameraSnap = true;
+    gameState.nearLamp = null;
     cancelAttackInput();
-    resetBoss(boss);
+    resetBoss(gameState.boss);
     syncForm();
-    rats = rats.filter((r) => !r.bossMinion);
-    magic = createMagic();
-    dashTrail = [];
-    resetFaunaAfterDeath(fauna);
-    player.x = checkpoint.x;
-    player.y = checkpoint.y;
-    player.hp = MAX_HP;
-    player.vy = 0;
-    player.dashRemaining = 0;
-    player.dashCooldown = 0;
-    player.wing = MAX_WING;
-    player.grounded = false;
-    player.inv = time + B.player.respawnInvulnerability;
-    attackUntil = 0;
-    slash = null;
-    for (const r of rats)
+    gameState.rats = gameState.rats.filter((r) => !r.bossMinion);
+    gameState.magic = createMagic();
+    gameState.dashTrail = [];
+    resetFaunaAfterDeath(gameState.fauna);
+    gameState.player.x = gameState.checkpoint.x;
+    gameState.player.y = gameState.checkpoint.y;
+    gameState.player.hp = MAX_HP;
+    gameState.player.vy = 0;
+    gameState.player.dashRemaining = 0;
+    gameState.player.dashCooldown = 0;
+    gameState.player.wing = MAX_WING;
+    gameState.player.grounded = false;
+    gameState.player.inv = gameState.time + B.player.respawnInvulnerability;
+    gameState.attackUntil = 0;
+    gameState.slash = null;
+    for (const r of gameState.rats)
       if (r.hp) {
         r.x = r.spawn;
         r.y = r.y0;
@@ -1051,123 +1080,147 @@ function hurt(source = "老鼠", damage = B.enemy.contactDamage) {
   }
 }
 function beginBoss() {
-  const hpBefore = player.hp;
-  clearTouch();
-  rats = rats.filter((r) => !r.bossMinion);
-  if (!legacy && !boss.active) {
-    checkpoint = { ...world.safes.at(-1) };
-    player.hp = MAX_HP;
-    activated.add(world.safes.length - 1);
+  const hpBefore = gameState.player.hp;
+  gameState.clearTouch();
+  gameState.rats = gameState.rats.filter((r) => !r.bossMinion);
+  if (!legacy && !gameState.boss.active) {
+    gameState.checkpoint = { ...world.safes.at(-1) };
+    gameState.player.hp = MAX_HP;
+    gameState.activated.add(world.safes.length - 1);
     saveCheckpoint();
   }
-  cameraSnap = true;
+  gameState.cameraSnap = true;
   cancelAttackInput();
   if (new URLSearchParams(location.search).has("boss-preview"))
     document.querySelector("h1 span").textContent = "紅熊試玩";
-  enterBoss(boss, player, world.arena);
+  enterBoss(gameState.boss, gameState.player, world.arena);
   syncForm();
-  if (legacy) checkpoint = { ...world.exit };
-  magic = createMagic();
-  fauna.mirrorReady = time;
-  attackUntil = 0;
-  slash = null;
-  keys.clear();
+  if (legacy) gameState.checkpoint = { ...world.exit };
+  gameState.magic = createMagic();
+  gameState.fauna.mirrorReady = gameState.time;
+  gameState.attackUntil = 0;
+  gameState.slash = null;
+  gameState.keys.clear();
   updateHud();
   if (hpBefore < MAX_HP) {
-    exploration.guidance ??= { visited: [] };
-    if (!exploration.guidance.visited.includes("boss")) exploration.guidance.visited.push("boss");
-    guidance.say("守門室前：生命已回滿", time, B.guidance.duration, {
+    gameState.exploration.guidance ??= { visited: [] };
+    if (!gameState.exploration.guidance.visited.includes("boss"))
+      gameState.exploration.guidance.visited.push("boss");
+    guidance.say("守門室前：生命已回滿", gameState.time, B.guidance.duration, {
       kind: "region",
       title: "守門室",
     });
-    exploration.quietUntil = time + B.guidance.duration;
+    gameState.exploration.quietUntil = gameState.time + B.guidance.duration;
   } else
     say(
-      `紅熊 ${boss.maxHp} HP：避開吐息瞄準線，跳過重踏震波。變身後等重踏掉落鏡子，再拾取恢復！`,
+      `紅熊 ${gameState.boss.maxHp} HP：避開吐息瞄準線，跳過重踏震波。變身後等重踏掉落鏡子，再拾取恢復！`,
       8,
     );
 }
 function teach(id, condition, message) {
-  if (condition) tutorial(exploration, guidance, id, phoneText(message), time, B.guidance.duration);
+  if (condition)
+    tutorial(
+      gameState.exploration,
+      guidance,
+      id,
+      phoneText(message),
+      gameState.time,
+      B.guidance.duration,
+    );
 }
 function runTutorials() {
-  exploration.teaching = [];
+  gameState.exploration.teaching = [];
   if (legacy) return;
-  if (keys.has("up") && !player.grounded && !player.slimeForm) learn(exploration, "wing");
-  teach("wing", !player.grounded && time > 1, "按住 ↑ 拍翼，耗盡後滑翔；落腳可恢復翼能。");
+  if (gameState.keys.has("up") && !gameState.player.grounded && !gameState.player.slimeForm)
+    learn(gameState.exploration, "wing");
+  teach(
+    "wing",
+    !gameState.player.grounded && gameState.time > 1,
+    "按住 ↑ 拍翼，耗盡後滑翔；落腳可恢復翼能。",
+  );
   teach(
     "rat",
-    rats.some((r) => r.hp === 2 && Math.hypot(r.x - player.x, r.y - player.y) < 170),
+    gameState.rats.some(
+      (r) => r.hp === 2 && Math.hypot(r.x - gameState.player.x, r.y - gameState.player.y) < 170,
+    ),
     "Space 連按近戰：老鼠水晶碎開後，還要再擊敗史萊姆。",
   );
   teach(
     "gaze",
-    crackedWalls.some(
-      (w) => !w.broken && Math.hypot(w.x + w.w / 2 - player.x, w.y + w.h / 2 - player.y) < 230,
+    gameState.crackedWalls.some(
+      (w) =>
+        !w.broken &&
+        Math.hypot(w.x + w.w / 2 - gameState.player.x, w.y + w.h / 2 - gameState.player.y) < 230,
     ),
     "牆後有風聲。靠近並面向它；上下方請按 ↑／↓ 觀察。",
   );
-  teach("wind", windAt(exploration, player), "順著風道上升，向左滑翔回培養室；按 ↓ 可抗風下降。");
+  teach(
+    "wind",
+    windAt(gameState.exploration, gameState.player),
+    "順著風道上升，向左滑翔回培養室；按 ↓ 可抗風下降。",
+  );
   teach(
     "root",
-    exploration.obstacles.some(
-      (o) => !o.broken && Math.hypot(o.x - player.x, o.y - player.y) < 150,
+    gameState.exploration.obstacles.some(
+      (o) => !o.broken && Math.hypot(o.x - gameState.player.x, o.y - gameState.player.y) < 150,
     ),
     "連按 Space：直斬割根、迴旋清枝、第三段打破薄障礙。",
   );
   teach(
     "bird",
-    fauna.birds.some((b) => b.hp && Math.hypot(b.x - player.x, b.y - player.y) < 190),
+    gameState.fauna.birds.some(
+      (b) => b.hp && Math.hypot(b.x - gameState.player.x, b.y - gameState.player.y) < 190,
+    ),
     "青影鳥會增殖！按 Q 映出鏡像，牠們會攻擊自己。",
   );
   teach(
     "spike",
-    world.traps.some((t) => Math.hypot(t.x - player.x, t.y - player.y) < 180),
+    world.traps.some((t) => Math.hypot(t.x - gameState.player.x, t.y - gameState.player.y) < 180),
     "尖刺每三秒升降，等它收起再通過。",
   );
   teach(
     "charge",
-    !crackedWalls.some((w) => w.id === "duct-intro" && !w.broken) &&
-      rats.some(
+    !gameState.crackedWalls.some((w) => w.id === "duct-intro" && !w.broken) &&
+      gameState.rats.some(
         (r) =>
           r.hp &&
-          Math.hypot(r.x - player.x, r.y - player.y) > 170 &&
-          Math.hypot(r.x - player.x, r.y - player.y) < 330,
+          Math.hypot(r.x - gameState.player.x, r.y - gameState.player.y) > 170 &&
+          Math.hypot(r.x - gameState.player.x, r.y - gameState.player.y) < 330,
       ),
     `遠處按住 Space ${B.attack.chargeTime} 秒再放開：大型光彈。`,
   );
   teach(
     "dash",
-    world.traps.some((t) => Math.hypot(t.x - player.x, t.y - player.y) < 180),
+    world.traps.some((t) => Math.hypot(t.x - gameState.player.x, t.y - gameState.player.y) < 180),
     "Shift 可以快速衝刺。",
   );
 }
 function captureCheckpoint() {
   return {
-    time,
-    kills,
-    deaths,
-    checkpoint: { ...checkpoint },
+    time: gameState.time,
+    kills: gameState.kills,
+    deaths: gameState.deaths,
+    checkpoint: { ...gameState.checkpoint },
     player: {
-      hp: player.hp,
-      abilities: { ...player.abilities },
-      energy: player.energy,
-      healCharge: player.healCharge,
+      hp: gameState.player.hp,
+      abilities: { ...gameState.player.abilities },
+      energy: gameState.player.energy,
+      healCharge: gameState.player.healCharge,
     },
-    rats: structuredClone(rats),
+    rats: structuredClone(gameState.rats),
     fauna: {
-      trees: structuredClone(fauna.trees),
-      birds: structuredClone(fauna.birds),
-      zones: structuredClone(fauna.zones),
+      trees: structuredClone(gameState.fauna.trees),
+      birds: structuredClone(gameState.fauna.birds),
+      zones: structuredClone(gameState.fauna.zones),
     },
-    walls: structuredClone(crackedWalls),
-    exploration: structuredClone(exploration),
-    lights: structuredClone(lights),
-    rewards: structuredClone(rewards),
-    torches: structuredClone(torches),
-    seen: [...seen],
-    activated: [...activated],
-    bossDefeated: boss.hp === 0,
+    walls: structuredClone(gameState.crackedWalls),
+    exploration: structuredClone(gameState.exploration),
+    lights: structuredClone(gameState.lights),
+    rewards: structuredClone(gameState.rewards),
+    torches: structuredClone(gameState.torches),
+    seen: [...gameState.seen],
+    activated: [...gameState.activated],
+    bossDefeated: gameState.boss.hp === 0,
   };
 }
 function saveCheckpoint() {
@@ -1184,9 +1237,9 @@ function saveCheckpoint() {
     result = { ok: false, message: "本次無法保存，仍可繼續遊玩" };
   }
   if (result.ok) {
-    saveInfo = { status: "ready", data: state };
+    gameState.saveInfo = { status: "ready", data: state };
     $("#save-status").textContent = "已保存至休息燈；關閉後可從這裡繼續。";
-    guidance.saved(time);
+    guidance.saved(gameState.time);
     cues.play("save");
   } else {
     say(result.message, 6);
@@ -1201,32 +1254,32 @@ function loadCheckpointMenu() {
   }
   if (legacy) return;
   try {
-    saveInfo = readSave(localStorage, world.version, world.seed);
+    gameState.saveInfo = readSave(localStorage, world.version, world.seed);
   } catch {
-    saveInfo = { status: "invalid" };
+    gameState.saveInfo = { status: "invalid" };
   }
-  $("#continue").hidden = saveInfo.status !== "ready";
+  $("#continue").hidden = gameState.saveInfo.status !== "ready";
   $("#save-status").textContent =
-    saveInfo.status === "ready"
+    gameState.saveInfo.status === "ready"
       ? "找到休息燈存檔，可繼續冒險。"
-      : saveInfo.status === "empty"
+      : gameState.saveInfo.status === "empty"
         ? ""
         : "舊存檔不相容或無法讀取，已保留；可確認後開始新冒險。";
 }
 function restoreCheckpoint(s) {
   try {
     reset();
-    time = s.time;
-    kills = s.kills;
-    deaths = s.deaths;
-    checkpoint = { ...s.checkpoint };
-    Object.assign(player, s.player, {
-      x: checkpoint.x,
-      y: checkpoint.y,
-      inv: time + B.player.respawnInvulnerability,
+    gameState.time = s.time;
+    gameState.kills = s.kills;
+    gameState.deaths = s.deaths;
+    gameState.checkpoint = { ...s.checkpoint };
+    Object.assign(gameState.player, s.player, {
+      x: gameState.checkpoint.x,
+      y: gameState.checkpoint.y,
+      inv: gameState.time + B.player.respawnInvulnerability,
     });
-    rats = structuredClone(s.rats);
-    for (const r of rats) {
+    gameState.rats = structuredClone(s.rats);
+    for (const r of gameState.rats) {
       r.x = r.spawn;
       r.y = r.y0;
       r.vy = 0;
@@ -1235,128 +1288,159 @@ function restoreCheckpoint(s) {
       r.state = "walk";
       r.timer = 0;
     }
-    fauna = {
+    gameState.fauna = {
       ...createFauna(world),
       ...structuredClone(s.fauna),
       tornadoes: [],
       mirrorUntil: 0,
-      mirrorReady: time,
+      mirrorReady: gameState.time,
     };
-    resetFaunaAfterDeath(fauna);
-    crackedWalls = structuredClone(s.walls);
-    for (const w of crackedWalls)
+    resetFaunaAfterDeath(gameState.fauna);
+    gameState.crackedWalls = structuredClone(s.walls);
+    for (const w of gameState.crackedWalls)
       if (w.broken) {
         w.broken = false;
         breakWall({ energy: 999999 }, w, map, T, world.platforms);
       }
-    exploration = structuredClone(s.exploration);
-    exploration.gaze = null;
-    exploration.elapsed = 0;
-    exploration.echoUntil = 0;
-    syncWinds(exploration, crackedWalls);
-    syncStumps(world.platforms, fauna.trees);
-    lights = structuredClone(s.lights);
-    rewards = structuredClone(s.rewards);
-    torches = structuredClone(s.torches);
-    seen.clear();
-    s.seen.forEach((v) => seen.add(v));
-    activated = new Set(s.activated);
-    if (s.bossDefeated) boss.hp = 0;
-    nearLamp = world.safes.findIndex((l) => l.x === checkpoint.x && l.y === checkpoint.y);
-    cameraSnap = true;
-    magic = createMagic();
-    healingFeedback.reset(player.hp);
+    gameState.exploration = structuredClone(s.exploration);
+    gameState.exploration.gaze = null;
+    gameState.exploration.elapsed = 0;
+    gameState.exploration.echoUntil = 0;
+    syncWinds(gameState.exploration, gameState.crackedWalls);
+    syncStumps(world.platforms, gameState.fauna.trees);
+    gameState.lights = structuredClone(s.lights);
+    gameState.rewards = structuredClone(s.rewards);
+    gameState.torches = structuredClone(s.torches);
+    gameState.seen.clear();
+    s.seen.forEach((v) => gameState.seen.add(v));
+    gameState.activated = new Set(s.activated);
+    if (s.bossDefeated) gameState.boss.hp = 0;
+    gameState.nearLamp = world.safes.findIndex(
+      (l) => l.x === gameState.checkpoint.x && l.y === gameState.checkpoint.y,
+    );
+    gameState.cameraSnap = true;
+    gameState.magic = createMagic();
+    healingFeedback.reset(gameState.player.hp);
     updateHud();
     return true;
   } catch {
     reset();
-    saveInfo = { status: "invalid" };
+    gameState.saveInfo = { status: "invalid" };
     $("#continue").hidden = true;
     $("#save-status").textContent = "存檔內容無法還原，原資料已保留。可確認後開始新冒險。";
     return false;
   }
 }
 function update(dt) {
-  if (mode === "reading") return;
-  time += dt;
+  if (gameState.mode === "reading") return;
+  gameState.time += dt;
   syncForm();
-  const dashStart = { x: player.x, y: player.y },
-    wasDashing = player.dashRemaining > 0;
-  const dx = Number(keys.has("right")) - Number(keys.has("left"));
-  if (dx) player.face = dx;
-  if (player.dashRemaining > 0)
-    dashTrail.push({ x: player.x, y: player.y, face: player.dashFace, until: time + 0.18 });
-  syncWinds(exploration, crackedWalls);
-  if (player.slimeForm) updateSlimePlayer(player, keys, dt, physics);
+  const dashStart = { x: gameState.player.x, y: gameState.player.y },
+    wasDashing = gameState.player.dashRemaining > 0;
+  const dx = Number(gameState.keys.has("right")) - Number(gameState.keys.has("left"));
+  if (dx) gameState.player.face = dx;
+  if (gameState.player.dashRemaining > 0)
+    gameState.dashTrail.push({
+      x: gameState.player.x,
+      y: gameState.player.y,
+      face: gameState.player.dashFace,
+      until: gameState.time + 0.18,
+    });
+  syncWinds(gameState.exploration, gameState.crackedWalls);
+  if (gameState.player.slimeForm) updateSlimePlayer(gameState.player, gameState.keys, dt, physics);
   else
-    physics.player(player, keys, dt, windAt(exploration, player), (p, elapsed) =>
-      gustAt(world, p, time - dt + elapsed),
+    physics.player(
+      gameState.player,
+      gameState.keys,
+      dt,
+      windAt(gameState.exploration, gameState.player),
+      (p, elapsed) => gustAt(world, p, gameState.time - dt + elapsed),
     );
-  updateGustWarnings(world, time, time - dt, camera, canvas, (kind) => cues.play(kind));
+  updateGustWarnings(world, gameState.time, gameState.time - dt, gameState.camera, canvas, (kind) =>
+    cues.play(kind),
+  );
   applySlimeHit();
-  if (breachHold) {
+  if (gameState.breachHold) {
     const target = wallTarget(true);
-    if (!validBreachHold(breachHold, target, nearEnemy(), player.energy, BREACH_COST)) {
-      breachHold = null;
-      breachConsumed = true;
-    } else if (time - breachHold.start >= BREACH_HOLD) {
+    if (
+      !validBreachHold(
+        gameState.breachHold,
+        target,
+        nearEnemy(),
+        gameState.player.energy,
+        BREACH_COST,
+      )
+    ) {
+      gameState.breachHold = null;
+      gameState.breachConsumed = true;
+    } else if (gameState.time - gameState.breachHold.start >= BREACH_HOLD) {
       performBreach(target);
-      breachHold = null;
-      breachConsumed = true;
+      gameState.breachHold = null;
+      gameState.breachConsumed = true;
     }
   }
-  dashTrail = dashTrail.filter((t) => t.until > time).slice(-10);
-  if (wasDashing && player.abilities.dash) {
-    for (const e of [...rats, ...fauna.birds, ...(boss.active ? [boss] : [])]) {
+  gameState.dashTrail = gameState.dashTrail.filter((t) => t.until > gameState.time).slice(-10);
+  if (wasDashing && gameState.player.abilities.dash) {
+    for (const e of [
+      ...gameState.rats,
+      ...gameState.fauna.birds,
+      ...(gameState.boss.active ? [gameState.boss] : []),
+    ]) {
       const rx = e.radiusX || 20,
         ry = e.radiusY || 18;
       if (
         !e.hp ||
-        dashHits.has(e) ||
-        e.x < Math.min(dashStart.x, player.x) - rx - 11 ||
-        e.x > Math.max(dashStart.x, player.x) + rx + 11 ||
-        Math.abs(e.y - player.y) > ry + 11 ||
-        !clearPath(player.x, player.y, e.x, e.y)
+        gameState.dashHits.has(e) ||
+        e.x < Math.min(dashStart.x, gameState.player.x) - rx - 11 ||
+        e.x > Math.max(dashStart.x, gameState.player.x) + rx + 11 ||
+        Math.abs(e.y - gameState.player.y) > ry + 11 ||
+        !clearPath(gameState.player.x, gameState.player.y, e.x, e.y)
       )
         continue;
-      dashHits.add(e);
+      gameState.dashHits.add(e);
       impact(e);
       const beforeHp = e.hp;
       e.hp = Math.max(0, e.hp - B.attack.dashDamage);
       enemyDamageSound(e, beforeHp);
-      e.stun = time + B.attack.enemyStun;
-      if (rats.includes(e)) {
+      e.stun = gameState.time + B.attack.enemyStun;
+      if (gameState.rats.includes(e)) {
         e.state = "rest";
         e.timer = B.attack.enemyHitRest;
       }
-      if (!e.hp) kills++;
+      if (!e.hp) gameState.kills++;
     }
   }
-  if (comboQueue && time >= nextAttack) {
-    comboQueue--;
+  if (gameState.comboQueue && gameState.time >= gameState.nextAttack) {
+    gameState.comboQueue--;
     nextCombo();
   }
-  if (slash && slash.stage === 3 && time < attackUntil - B.attack.activeEnd) {
-    const speed = keys.has(slash.face > 0 ? "right" : "left")
+  if (
+    gameState.slash &&
+    gameState.slash.stage === 3 &&
+    gameState.time < gameState.attackUntil - B.attack.activeEnd
+  ) {
+    const speed = gameState.keys.has(gameState.slash.face > 0 ? "right" : "left")
       ? B.attack.crossFullSpeed
       : B.attack.crossHalfSpeed;
     const steps = Math.max(1, Math.ceil((speed * dt) / 6));
     for (let i = 0; i < steps; i++) {
-      move(player, (slash.face * speed * dt) / steps, 0);
-      slash.x = player.x;
-      slash.y = player.y;
+      move(gameState.player, (gameState.slash.face * speed * dt) / steps, 0);
+      gameState.slash.x = gameState.player.x;
+      gameState.slash.y = gameState.player.y;
       applyMelee();
     }
   }
-  if (slash && time < attackUntil - B.attack.activeEnd) applyMelee();
-  updateMagic(magic, dt, time, {
+  if (gameState.slash && gameState.time < gameState.attackUntil - B.attack.activeEnd) applyMelee();
+  updateMagic(gameState.magic, dt, gameState.time, {
     solid,
     targets: [
-      ...exploration.obstacles.filter((o) => !o.broken).map((o) => ({ ...o, tree: true })),
-      ...rats,
-      ...fauna.birds,
-      ...(boss.active ? [boss] : []),
-      ...fauna.trees.map((t) => ({ ...t, radiusX: 27, radiusY: 35, tree: true })),
+      ...gameState.exploration.obstacles
+        .filter((o) => !o.broken)
+        .map((o) => ({ ...o, tree: true })),
+      ...gameState.rats,
+      ...gameState.fauna.birds,
+      ...(gameState.boss.active ? [gameState.boss] : []),
+      ...gameState.fauna.trees.map((t) => ({ ...t, radiusX: 27, radiusY: 35, tree: true })),
     ],
     hit: (e, damage = B.enemy.contactDamage) => {
       if (e.tree) return; // Tree bark blocks light; only melee can fell trees.
@@ -1364,62 +1448,63 @@ function update(dt) {
       const beforeHp = e.hp;
       e.hp = Math.max(0, e.hp - damage);
       enemyDamageSound(e, beforeHp);
-      e.stun = time + B.attack.enemyStun;
-      if (rats.includes(e)) {
+      e.stun = gameState.time + B.attack.enemyStun;
+      if (gameState.rats.includes(e)) {
         e.state = "rest";
         e.timer = B.attack.enemyHitRest;
-        if (e.hp < 2 && !e.pure && !e.big) learn(exploration, "rat");
+        if (e.hp < 2 && !e.pure && !e.big) learn(gameState.exploration, "rat");
       }
-      if (!e.hp) kills++;
+      if (!e.hp) gameState.kills++;
     },
   });
   $("#magic").textContent =
-    chargeStart === null
+    gameState.chargeStart === null
       ? "光彈 · F 切換"
-      : time - chargeStart >= B.attack.chargeTime
+      : gameState.time - gameState.chargeStart >= B.attack.chargeTime
         ? "蓄力完成 · 放開發射"
-        : `蓄力 ${Math.min(100, Math.floor(((time - chargeStart) / B.attack.chargeTime) * 100))}%`;
-  for (const r of [...rats]) {
+        : `蓄力 ${Math.min(100, Math.floor(((gameState.time - gameState.chargeStart) / B.attack.chargeTime) * 100))}%`;
+  for (const r of [...gameState.rats]) {
     const children = splitSlime(r, free);
     for (const child of children) {
       if (r.bossMinion) child.bossMinion = true;
-      child.stun = time + B.attack.enemyStun;
-      struck.add(child);
-      dashHits.add(child);
-      for (const shot of magic.shots) shot.hitTargets?.add(child);
+      child.stun = gameState.time + B.attack.enemyStun;
+      gameState.struck.add(child);
+      gameState.dashHits.add(child);
+      for (const shot of gameState.magic.shots) shot.hitTargets?.add(child);
     }
-    rats.push(...children);
+    gameState.rats.push(...children);
   }
   finishBoss();
-  for (const r of rats) {
+  for (const r of gameState.rats) {
     if (!r.hp) continue;
-    updateRat(r, player, physics, dt, time, clearPath);
+    updateRat(r, gameState.player, physics, dt, gameState.time, clearPath);
     if (
-      time >= r.stun &&
-      Math.abs(player.x - r.x) < (r.bodyRadius || 14) + 13 &&
-      Math.abs(player.y - r.y) < (r.bodyRadius || 14) + 10
+      gameState.time >= r.stun &&
+      Math.abs(gameState.player.x - r.x) < (r.bodyRadius || 14) + 13 &&
+      Math.abs(gameState.player.y - r.y) < (r.bodyRadius || 14) + 10
     )
       hurt(r.big ? "紫色大史萊姆" : "老鼠", r.big ? B.enemy.bigDamage : B.enemy.contactDamage);
   }
   if (handheld) {
-    $("#dash").innerHTML = player.slimeForm
+    $("#dash").innerHTML = gameState.player.slimeForm
       ? "X<small>變身中</small>"
-      : `X<small>${player.dashCooldown > 0 ? player.dashCooldown.toFixed(1) + "s" : "衝刺"}</small>`;
-    $("#dash").dataset.ready = player.dashCooldown <= 0;
+      : `X<small>${gameState.player.dashCooldown > 0 ? gameState.player.dashCooldown.toFixed(1) + "s" : "衝刺"}</small>`;
+    $("#dash").dataset.ready = gameState.player.dashCooldown <= 0;
   } else
-    $("#dash").textContent = player.slimeForm
+    $("#dash").textContent = gameState.player.slimeForm
       ? "史萊姆無衝刺"
-      : player.dashCooldown > 0
-        ? `衝刺 ${player.dashCooldown.toFixed(1)}s`
+      : gameState.player.dashCooldown > 0
+        ? `衝刺 ${gameState.player.dashCooldown.toFixed(1)}s`
         : "衝刺 Shift";
-  if (handheld && !player.slimeForm && time >= fauna.mirrorReady) {
+  if (handheld && !gameState.player.slimeForm && gameState.time >= gameState.fauna.mirrorReady) {
     const m = sceneMirrors.find(
       (m) =>
-        Math.hypot(m.x - player.x, m.y - player.y) < 40 && clearPath(player.x, player.y, m.x, m.y),
+        Math.hypot(m.x - gameState.player.x, m.y - gameState.player.y) < 40 &&
+        clearPath(gameState.player.x, gameState.player.y, m.x, m.y),
     );
     if (
       m &&
-      fauna.birds.some(
+      gameState.fauna.birds.some(
         (b) =>
           b.hp &&
           b.mode !== "mirror" &&
@@ -1427,42 +1512,42 @@ function update(dt) {
           clearPath(m.x, m.y, b.x, b.y),
       )
     ) {
-      const count = mirrorFauna(fauna, m, time, clearPath);
+      const count = mirrorFauna(gameState.fauna, m, gameState.time, clearPath);
       if (count > 0) {
         sfx.play("mirror");
-        learn(exploration, "bird");
+        learn(gameState.exploration, "bird");
       }
     }
   }
-  const birdHealth = fauna.birds.map((e) => [e, e.hp]);
-  kills += updateFauna(fauna, player, time, dt, {
+  const birdHealth = gameState.fauna.birds.map((e) => [e, e.hp]);
+  gameState.kills += updateFauna(gameState.fauna, gameState.player, gameState.time, dt, {
     clear: clearPath,
     free,
     hurt,
     regionAt: world.regionAt,
     visible: (b) => {
-      const cx = camera.x,
-        cy = camera.y;
+      const cx = gameState.camera.x,
+        cy = gameState.camera.y;
       return b.x >= cx && b.x <= cx + canvas.width && b.y >= cy && b.y <= cy + canvas.height;
     },
   });
   for (const [e, hp] of birdHealth) enemyDamageSound(e, hp);
-  const bossState = boss.state;
+  const bossState = gameState.boss.state;
   let summoned = false;
-  updateBoss(boss, player, dt, time, {
+  updateBoss(gameState.boss, gameState.player, dt, gameState.time, {
     clear: clearPath,
     solid,
     hurt,
     summon: (kinds, i) => {
       summoned = true;
       const minions = bossSummons(
-        boss,
-        player,
+        gameState.boss,
+        gameState.player,
         kinds,
-        rats.filter((r) => r.bossMinion && r.hp > 0).length,
+        gameState.rats.filter((r) => r.bossMinion && r.hp > 0).length,
       );
-      for (const r of minions) r.stun = time + B.boss.summonGrace;
-      rats.push(...minions);
+      for (const r of minions) r.stun = gameState.time + B.boss.summonGrace;
+      gameState.rats.push(...minions);
       say(`紅熊剩餘 ${B.boss.waves[i].ratio * 100}% 生命：召喚援軍！`, 3);
     },
     curse: () =>
@@ -1476,40 +1561,47 @@ function update(dt) {
     mirrorDrop: () => teach("mirror-drop", true, "重踏震落了鏡子！跳過震波，走近鏡子恢復。"),
     cured: () => {
       sfx.play("mirror");
-      learn(exploration, "curse", "mirror-drop");
+      learn(gameState.exploration, "curse", "mirror-drop");
     },
     recoveryDrop: () => teach("recovery", true, "大塊綠色能量出現！拾取可回復一格生命。"),
     recovered: () => {
       updateHud();
       sfx.play("pickup", { kind: "relic" });
-      learn(exploration, "recovery");
+      learn(gameState.exploration, "recovery");
     },
   });
   if (summoned) sfx.play("bossSummon");
-  if (boss.active && boss.hp > 0 && bossState !== "ready" && boss.state === "ready")
+  if (
+    gameState.boss.active &&
+    gameState.boss.hp > 0 &&
+    bossState !== "ready" &&
+    gameState.boss.state === "ready"
+  )
     sfx.play("bossWarn");
   syncForm();
   $("#mirror").textContent =
-    time >= fauna.mirrorReady ? "鏡面 Q" : `鏡面 ${Math.ceil(fauna.mirrorReady - time)}s`;
+    gameState.time >= gameState.fauna.mirrorReady
+      ? "鏡面 Q"
+      : `鏡面 ${Math.ceil(gameState.fauna.mirrorReady - gameState.time)}s`;
   for (const trap of world.traps)
-    if (trapSupported(trap, solid) && touchesSpikes(player, trap, time)) {
+    if (trapSupported(trap, solid) && touchesSpikes(gameState.player, trap, gameState.time)) {
       hurt("針刺");
       break;
     }
   const pickupSounds = [];
-  for (const reward of rewards)
+  for (const reward of gameState.rewards)
     if (
       !reward.got &&
-      Math.hypot(player.x - reward.x, player.y - reward.y) < 26 &&
-      clearPath(player.x, player.y, reward.x, reward.y) &&
-      collectReward(reward, player, MAX_WING, time)
+      Math.hypot(gameState.player.x - reward.x, gameState.player.y - reward.y) < 26 &&
+      clearPath(gameState.player.x, gameState.player.y, reward.x, reward.y) &&
+      collectReward(reward, gameState.player, MAX_WING, gameState.time)
     ) {
       pickupSounds.push(reward.kind === "relic" ? { kind: "relic" } : {});
-      if (reward.kind === "relic") importantMessages.push(relicMessage(reward, handheld));
-      pickupFlash = {
+      if (reward.kind === "relic") gameState.importantMessages.push(relicMessage(reward, handheld));
+      gameState.pickupFlash = {
         x: reward.x,
         y: reward.y,
-        until: time + 0.7,
+        until: gameState.time + 0.7,
         kind: reward.kind,
         amount: reward.amount || 1,
         healed: reward.healed || 0,
@@ -1518,128 +1610,155 @@ function update(dt) {
       updateHud();
     }
   let collectedOrb = false;
-  for (const l of lights)
-    if (!l.got && Math.hypot(player.x - l.x, player.y - l.y) < 30) {
+  for (const l of gameState.lights)
+    if (!l.got && Math.hypot(gameState.player.x - l.x, gameState.player.y - l.y) < 30) {
       l.got = true;
       collectedOrb = true;
       sfx.play("orb");
       updateHud();
       say(
-        lights.every((p) => p.got)
+        gameState.lights.every((p) => p.got)
           ? "三顆光點齊了！感應出口方向，繼續前進。"
           : "找到引路光點！繼續探索上下岔路。",
       );
     }
   if (!collectedOrb) for (const opts of pickupSounds) sfx.play("pickup", opts);
-  const lamp = world.safes.findIndex((s) => Math.hypot(player.x - s.x, player.y - s.y) < 45);
-  if (lamp >= 0 && nearLamp !== lamp) {
-    const first = !activated.has(lamp);
-    activated.add(lamp);
-    checkpoint = { ...world.safes[lamp] };
-    if (first) player.hp = MAX_HP;
+  const lamp = world.safes.findIndex(
+    (s) => Math.hypot(gameState.player.x - s.x, gameState.player.y - s.y) < 45,
+  );
+  if (lamp >= 0 && gameState.nearLamp !== lamp) {
+    const first = !gameState.activated.has(lamp);
+    gameState.activated.add(lamp);
+    gameState.checkpoint = { ...world.safes[lamp] };
+    if (first) gameState.player.hp = MAX_HP;
     updateHud();
     saveCheckpoint();
   }
-  nearLamp = lamp >= 0 ? lamp : null;
-  if (!boss.active && Math.hypot(player.x - world.exit.x, player.y - world.exit.y) < 42) {
-    if (lights.every((p) => p.got)) beginBoss();
+  gameState.nearLamp = lamp >= 0 ? lamp : null;
+  if (
+    !gameState.boss.active &&
+    Math.hypot(gameState.player.x - world.exit.x, gameState.player.y - world.exit.y) < 42
+  ) {
+    if (gameState.lights.every((p) => p.got)) beginBoss();
     else teach("exit-locked", true, "出口需要 3 顆引路光點。");
   }
   if (
-    mode === "playing" &&
-    boss.active &&
-    !boss.hp &&
-    Math.hypot(player.x - world.arena.exit.x, player.y - world.arena.exit.y) < 42
+    gameState.mode === "playing" &&
+    gameState.boss.active &&
+    !gameState.boss.hp &&
+    Math.hypot(gameState.player.x - world.arena.exit.x, gameState.player.y - world.arena.exit.y) <
+      42
   ) {
-    mode = "won";
+    gameState.mode = "won";
     const played = sfx.play("levelClear");
     if (played && !sfx.muted && sfx.volume > 0) music.duck(1500);
-    clearTouch();
-    keys.clear();
+    gameState.clearTouch();
+    gameState.keys.clear();
     cancelAttackInput();
     panel(
       "第一關完成！",
-      `擊敗紅熊，逃出培養所！探索 ${Math.floor(time / 60)} 分 ${Math.floor(time % 60)} 秒，擊退 ${kills} 隻敵人，返回 ${deaths} 次；藏品 ${rewards.filter((r) => r.kind === "relic" && r.got).length}/3。`,
+      `擊敗紅熊，逃出培養所！探索 ${Math.floor(gameState.time / 60)} 分 ${Math.floor(gameState.time % 60)} 秒，擊退 ${gameState.kills} 隻敵人，返回 ${gameState.deaths} 次；藏品 ${gameState.rewards.filter((r) => r.kind === "relic" && r.got).length}/3。`,
       "再玩一次",
     );
   }
-  const gazeKeys = handheld ? new Set([...keys].filter((k) => k !== "up")) : keys;
-  if (handheld && keys.has("lookUp")) gazeKeys.add("up");
-  const found = updateGaze(exploration, player, gazeKeys, crackedWalls, dt, physics.solid);
+  const gazeKeys = handheld
+    ? new Set([...gameState.keys].filter((k) => k !== "up"))
+    : gameState.keys;
+  if (handheld && gameState.keys.has("lookUp")) gazeKeys.add("up");
+  const found = updateGaze(
+    gameState.exploration,
+    gameState.player,
+    gazeKeys,
+    gameState.crackedWalls,
+    dt,
+    physics.solid,
+  );
   if (found) {
-    learn(exploration, "gaze");
+    learn(gameState.exploration, "gaze");
     cues.play("discover");
   }
-  const fighting = [...rats, ...fauna.birds, ...fauna.trees, ...(boss.active ? [boss] : [])].some(
+  const fighting = [
+    ...gameState.rats,
+    ...gameState.fauna.birds,
+    ...gameState.fauna.trees,
+    ...(gameState.boss.active ? [gameState.boss] : []),
+  ].some(
     (e) =>
       e.hp > 0 &&
-      Math.hypot(player.x - e.x, player.y - e.y) < 220 &&
-      clearPath(player.x, player.y, e.x, e.y),
+      Math.hypot(gameState.player.x - e.x, gameState.player.y - e.y) < 220 &&
+      clearPath(gameState.player.x, gameState.player.y, e.x, e.y),
   );
-  const echo = collectEchoes(exploration, player, time, fighting);
+  const echo = collectEchoes(gameState.exploration, gameState.player, gameState.time, fighting);
   if (echo) {
     cues.play("discover");
-    importantMessages.push({ kind: "echo", title: "勇者殘響", body: echo.text });
+    gameState.importantMessages.push({ kind: "echo", title: "勇者殘響", body: echo.text });
   }
   updateGuidance(
-    exploration,
-    { world, p: player, walls: crackedWalls, boss, time, handheld },
+    gameState.exploration,
+    {
+      world,
+      p: gameState.player,
+      walls: gameState.crackedWalls,
+      boss: gameState.boss,
+      time: gameState.time,
+      handheld,
+    },
     guidance,
   );
   runTutorials();
-  const melee = nearEnemy() || (comboStage > 0 && time <= comboUntil);
-  $("#attack-mode").textContent = player.slimeForm
+  const melee = nearEnemy() || (gameState.comboStage > 0 && gameState.time <= gameState.comboUntil);
+  $("#attack-mode").textContent = gameState.player.slimeForm
     ? "史萊姆跳撞"
-    : chargeStart !== null
+    : gameState.chargeStart !== null
       ? "蓄力光彈"
       : melee
         ? "✦ 近戰連斬"
         : "◉ 光彈";
   $("#attack-mode").dataset.melee = melee;
-  $("#region").textContent = boss.active
+  $("#region").textContent = gameState.boss.active
     ? "紅熊守門室"
-    : world.regions?.[world.regionAt(player.x, player.y)]?.name || "探索中";
+    : world.regions?.[world.regionAt(gameState.player.x, gameState.player.y)]?.name || "探索中";
   updateCamera(
-    camera,
-    player,
+    gameState.camera,
+    gameState.player,
     canvas.width,
     canvas.height,
     { w: W * T, h: H * T },
     dt,
-    cameraSnap,
+    gameState.cameraSnap,
     {
       gentleDesktop: !handheld,
-      moveDirection: Number(keys.has("right")) - Number(keys.has("left")),
+      moveDirection: Number(gameState.keys.has("right")) - Number(gameState.keys.has("left")),
     },
   );
-  cameraSnap = false;
-  discoverTorches(torches, player, clearPath);
-  const cx = Math.floor(player.x / T),
-    cy = Math.floor(player.y / T);
+  gameState.cameraSnap = false;
+  discoverTorches(gameState.torches, gameState.player, clearPath);
+  const cx = Math.floor(gameState.player.x / T),
+    cy = Math.floor(gameState.player.y / T);
   for (let y = cy - 4; y <= cy + 4; y++)
-    for (let x = cx - 6; x <= cx + 6; x++) if (map[y]?.[x] === 0) seen.add(`${x},${y}`);
+    for (let x = cx - 6; x <= cx + 6; x++) if (map[y]?.[x] === 0) gameState.seen.add(`${x},${y}`);
   if (handheld) {
     const intent = attackIntent({
       melee,
       combo: false,
       wall: wallTarget(true),
-      energy: player.energy,
+      energy: gameState.player.energy,
       cost: BREACH_COST,
     });
     $(".attack").dataset.intent = intent;
-    $(".attack small").textContent = player.slimeForm
+    $(".attack small").textContent = gameState.player.slimeForm
       ? "跳撞"
-      : breachHold
-        ? Math.floor(((time - breachHold.start) / BREACH_HOLD) * 100) + "%"
+      : gameState.breachHold
+        ? Math.floor(((gameState.time - gameState.breachHold.start) / BREACH_HOLD) * 100) + "%"
         : intent === "breach"
           ? "長按破牆"
-          : chargeStart !== null
-            ? time - chargeStart >= B.attack.chargeTime
+          : gameState.chargeStart !== null
+            ? gameState.time - gameState.chargeStart >= B.attack.chargeTime
               ? "滿蓄力"
               : "蓄力"
             : "攻擊";
   }
-  noticeUntil = guidance.until;
+  gameState.noticeUntil = guidance.until;
   showImportantMessages();
 }
 function rect(x, y, w, h, c) {
@@ -1652,44 +1771,86 @@ function text(t, x, y, c = "#c5d9c5", size = 13) {
   g.fillText(t, Math.round(x), Math.round(y));
 }
 function render() {
-  healingFeedback.paintHud($("#hearts"), time);
-  guidance.tick(time, mode, reduced, player, camera, canvas, crackedWalls, boss);
+  healingFeedback.paintHud($("#hearts"), gameState.time);
+  guidance.tick(
+    gameState.time,
+    gameState.mode,
+    gameState.reduced,
+    gameState.player,
+    gameState.camera,
+    canvas,
+    gameState.crackedWalls,
+    gameState.boss,
+  );
   for (const [id, kind] of [
     ["#energy", "energy"],
     ["#healing", "wing"],
   ]) {
-    const active = pickupFlash?.kind === kind && time < pickupFlash.until;
+    const active =
+      gameState.pickupFlash?.kind === kind && gameState.time < gameState.pickupFlash.until;
     $(id).classList.toggle("resource-flash", Boolean(active));
     $(id).style.transform =
-      active && !reduced
-        ? `translateY(${-Math.sin(Math.min(1, (pickupFlash.until - time) / 0.7) * Math.PI) * 2}px)`
+      active && !gameState.reduced
+        ? `translateY(${-Math.sin(Math.min(1, (gameState.pickupFlash.until - gameState.time) / 0.7) * Math.PI) * 2}px)`
         : "none";
   }
-  $("#critical-vignette").style.opacity = criticalOpacity(player.hp, time, reduced);
+  $("#critical-vignette").style.opacity = criticalOpacity(
+    gameState.player.hp,
+    gameState.time,
+    gameState.reduced,
+  );
   g.imageSmoothingEnabled = false;
-  if (cameraSnap) {
-    updateCamera(camera, player, canvas.width, canvas.height, { w: W * T, h: H * T }, 0, true, {
-      gentleDesktop: !handheld,
-      moveDirection: 0,
-    });
-    cameraSnap = false;
+  if (gameState.cameraSnap) {
+    updateCamera(
+      gameState.camera,
+      gameState.player,
+      canvas.width,
+      canvas.height,
+      { w: W * T, h: H * T },
+      0,
+      true,
+      {
+        gentleDesktop: !handheld,
+        moveDirection: 0,
+      },
+    );
+    gameState.cameraSnap = false;
   }
-  g.fillStyle = light ? "#b6c5ae" : "#14292e";
+  g.fillStyle = gameState.light ? "#b6c5ae" : "#14292e";
   g.fillRect(0, 0, canvas.width, canvas.height);
   g.save();
-  g.translate(-Math.round(camera.x), -Math.round(camera.y));
-  drawTerrain(g, map, T, camera, canvas.width, canvas.height, light, world.regionAt);
-  drawRegionFeatures(g, world, time, reduced, camera, canvas);
-  drawExploration(g, exploration, world, player, time, reduced, camera, canvas, crackedWalls);
-  if (handheld) drawSceneMirrors(g, sceneMirrors, time, fauna.mirrorReady);
-  for (const w of crackedWalls) {
+  g.translate(-Math.round(gameState.camera.x), -Math.round(gameState.camera.y));
+  drawTerrain(
+    g,
+    map,
+    T,
+    gameState.camera,
+    canvas.width,
+    canvas.height,
+    gameState.light,
+    world.regionAt,
+  );
+  drawRegionFeatures(g, world, gameState.time, gameState.reduced, gameState.camera, canvas);
+  drawExploration(
+    g,
+    gameState.exploration,
+    world,
+    gameState.player,
+    gameState.time,
+    gameState.reduced,
+    gameState.camera,
+    canvas,
+    gameState.crackedWalls,
+  );
+  if (handheld) drawSceneMirrors(g, sceneMirrors, gameState.time, gameState.fauna.mirrorReady);
+  for (const w of gameState.crackedWalls) {
     if (
       w.broken ||
       (world.version && !w.discovered) ||
-      w.x > camera.x + canvas.width ||
-      w.x + w.w < camera.x ||
-      w.y > camera.y + canvas.height ||
-      w.y + w.h < camera.y
+      w.x > gameState.camera.x + canvas.width ||
+      w.x + w.w < gameState.camera.x ||
+      w.y > gameState.camera.y + canvas.height ||
+      w.y + w.h < gameState.camera.y
     )
       continue;
     rect(w.x, w.y, w.w, w.h, "#625047");
@@ -1724,22 +1885,22 @@ function render() {
     );
   }
   // Wall fixtures remain visible while unlit; only actual nearby exploration ignites them.
-  drawCrackGuidance(g, player, crackedWalls, time, reduced);
-  for (const t of torches) {
+  drawCrackGuidance(g, gameState.player, gameState.crackedWalls, gameState.time, gameState.reduced);
+  for (const t of gameState.torches) {
     if (
-      t.x < camera.x - 45 ||
-      t.x > camera.x + canvas.width + 45 ||
-      t.y < camera.y - 45 ||
-      t.y > camera.y + canvas.height + 45
+      t.x < gameState.camera.x - 45 ||
+      t.x > gameState.camera.x + canvas.width + 45 ||
+      t.y < gameState.camera.y - 45 ||
+      t.y > gameState.camera.y + canvas.height + 45
     )
       continue;
     const x = t.x,
       y = t.y;
     if (t.lit) {
       g.save();
-      g.globalAlpha = light ? 0.09 : 0.14;
+      g.globalAlpha = gameState.light ? 0.09 : 0.14;
       rect(x - 28, y - 32, 56, 60, "#ffc36b");
-      g.globalAlpha = light ? 0.12 : 0.18;
+      g.globalAlpha = gameState.light ? 0.12 : 0.18;
       rect(x - 17, y - 23, 34, 39, "#ffc36b");
       g.restore();
     }
@@ -1748,7 +1909,7 @@ function render() {
     rect(x - 3, y - 1, 6, 15, "#6e513b");
     rect(x - 6, y - 4, 12, 5, t.lit ? "#a17b48" : "#62646a");
     if (t.lit) {
-      const flicker = reduced ? 0 : Math.floor(time * 4 + t.node) % 2;
+      const flicker = gameState.reduced ? 0 : Math.floor(gameState.time * 4 + t.node) % 2;
       rect(x - 5, y - 13, 10, 9, "#ec8a40");
       rect(x - 3, y - 19 - flicker, 6, 13 + flicker, "#ffd17a");
       rect(x - 1, y - 13, 3, 8, "#fff1b0");
@@ -1759,10 +1920,10 @@ function render() {
   }
   for (const p of world.platforms) {
     if (
-      p.y >= camera.y &&
-      p.y <= camera.y + canvas.height &&
-      p.x + p.w >= camera.x &&
-      p.x <= camera.x + canvas.width
+      p.y >= gameState.camera.y &&
+      p.y <= gameState.camera.y + canvas.height &&
+      p.x + p.w >= gameState.camera.x &&
+      p.x <= gameState.camera.x + canvas.width
     ) {
       rect(p.x, p.y, p.w, 3, "#7a9f9b");
       for (let x = p.x + 4; x < p.x + p.w; x += 16) rect(x, p.y + 3, 5, 3, "#405e5e");
@@ -1770,28 +1931,30 @@ function render() {
   }
   for (const trap of world.traps) {
     if (
-      Math.abs(trap.x - player.x) > canvas.width ||
-      Math.abs(trap.y - player.y) > canvas.height ||
+      Math.abs(trap.x - gameState.player.x) > canvas.width ||
+      Math.abs(trap.y - gameState.player.y) > canvas.height ||
       !trapSupported(trap, solid)
     )
       continue;
-    drawSpikes(g, trap, time);
+    drawSpikes(g, trap, gameState.time);
   }
   for (const mark of world.landmarks) {
     text(mark.name, mark.x - 65, mark.y - 54, "#b8cdb0", 15);
     rect(mark.x - 28, mark.y + 39, 56, 4, "#8aa695");
   }
-  for (const reward of rewards) {
+  for (const reward of gameState.rewards) {
     if (
       reward.got ||
-      reward.x < camera.x - 20 ||
-      reward.x > camera.x + canvas.width + 20 ||
-      reward.y < camera.y - 20 ||
-      reward.y > camera.y + canvas.height + 20
+      reward.x < gameState.camera.x - 20 ||
+      reward.x > gameState.camera.x + canvas.width + 20 ||
+      reward.y < gameState.camera.y - 20 ||
+      reward.y > gameState.camera.y + canvas.height + 20
     )
       continue;
     const x = reward.x,
-      y = reward.y + (reduced ? 0 : Math.round(Math.sin(time * 2 + reward.node) * 2));
+      y =
+        reward.y +
+        (gameState.reduced ? 0 : Math.round(Math.sin(gameState.time * 2 + reward.node) * 2));
     if (reward.kind === "wing") drawPickupIcon(g, "wing", x, y);
     else if (reward.kind === "energy") {
       rect(x - 5, y - 5, 10, 10, "#f0a660");
@@ -1799,32 +1962,32 @@ function render() {
     } else drawPickupIcon(g, "relic", x, y);
   }
 
-  if (pickupFlash && time < pickupFlash.until) {
-    const k = pickupFlash;
+  if (gameState.pickupFlash && gameState.time < gameState.pickupFlash.until) {
+    const k = gameState.pickupFlash;
     g.strokeStyle = k.kind === "wing" ? "#9ff0b6" : "#dfc5ff";
     g.lineWidth = 2;
-    const size = reduced ? 14 : 14 + (1 - (k.until - time) / 0.7) * 18;
+    const size = gameState.reduced ? 14 : 14 + (1 - (k.until - gameState.time) / 0.7) * 18;
     g.strokeRect(k.x - size, k.y - size, size * 2, size * 2);
   }
-  for (const l of lights) {
+  for (const l of gameState.lights) {
     if (l.got) continue;
-    const bob = reduced ? 0 : Math.round(Math.sin(time * 3) * 3);
+    const bob = gameState.reduced ? 0 : Math.round(Math.sin(gameState.time * 3) * 3);
     rect(l.x - 9, l.y - 9 + bob, 18, 18, "#6a6951");
     rect(l.x - 5, l.y - 7 + bob, 10, 14, "#ffe6a0");
     rect(l.x - 7, l.y - 3 + bob, 14, 6, "#ffe6a0");
   }
   world.safes.forEach((safe, i) => {
     rect(safe.x - 12, safe.y - 15, 24, 30, "#58615a");
-    rect(safe.x - 7, safe.y - 23, 14, 17, activated.has(i) ? "#ffe3a0" : "#9ab6ba");
+    rect(safe.x - 7, safe.y - 23, 14, 17, gameState.activated.has(i) ? "#ffe3a0" : "#9ab6ba");
     text("休息燈", safe.x - 23, safe.y + 35);
   });
   const ordinaryTarget = ordinaryWall(
-    player,
+    gameState.player,
     world,
-    keys.has("down") ? "down" : keys.has("up") ? "up" : null,
+    gameState.keys.has("down") ? "down" : gameState.keys.has("up") ? "up" : null,
   );
   if (ordinaryTarget) {
-    g.strokeStyle = player.energy >= BREACH_COST ? "#edc78f" : "#877365";
+    g.strokeStyle = gameState.player.energy >= BREACH_COST ? "#edc78f" : "#877365";
     g.lineWidth = 2;
     g.strokeRect(ordinaryTarget.x, ordinaryTarget.y, ordinaryTarget.w, ordinaryTarget.h);
     text(`破牆 ${BREACH_COST}`, ordinaryTarget.x, ordinaryTarget.y - 5, "#edc78f", 12);
@@ -1832,19 +1995,22 @@ function render() {
   const ex = world.exit.x,
     ey = world.exit.y;
   rect(ex - 20, ey - 40, 40, 80, "#41685f");
-  rect(ex - 13, ey - 34, 26, 68, lights.every((l) => l.got) ? "#dbe9ac" : "#789789");
+  rect(ex - 13, ey - 34, 26, 68, gameState.lights.every((l) => l.got) ? "#dbe9ac" : "#789789");
   text("紅熊守門室", ex - 36, ey - 52);
   function sprite(index, x, y, width, height, flip = false) {
-    if (!faunaImage) return;
-    const f = faunaFrames[index];
+    if (!gameState.faunaImage) return;
+    const f = gameState.faunaFrames[index];
     g.save();
     g.translate(Math.round(x), Math.round(y));
     if (flip) g.scale(-1, 1);
-    g.drawImage(faunaImage, f.x, f.y, f.w, f.h, -width / 2, -height / 2, width, height);
+    g.drawImage(gameState.faunaImage, f.x, f.y, f.w, f.h, -width / 2, -height / 2, width, height);
     g.restore();
   }
-  for (const t of fauna.trees) {
-    if (Math.abs(t.x - player.x) > canvas.width || Math.abs(t.y - player.y) > canvas.height)
+  for (const t of gameState.fauna.trees) {
+    if (
+      Math.abs(t.x - gameState.player.x) > canvas.width ||
+      Math.abs(t.y - gameState.player.y) > canvas.height
+    )
       continue;
     if (!t.hp) {
       rect(t.x - 15, t.y + 20, 30, 15, "#684f38");
@@ -1858,14 +2024,14 @@ function render() {
       g.strokeRect(t.x - 70, t.y - 25, 140, 50);
     }
   }
-  for (const b of fauna.birds) {
+  for (const b of gameState.fauna.birds) {
     if (
       !b.hp ||
-      Math.abs(b.x - player.x) > canvas.width ||
-      Math.abs(b.y - player.y) > canvas.height
+      Math.abs(b.x - gameState.player.x) > canvas.width ||
+      Math.abs(b.y - gameState.player.y) > canvas.height
     )
       continue;
-    sprite(reduced ? 0 : Math.floor(time * 6) % 2, b.x, b.y, 48, 36, b.dx < 0);
+    sprite(gameState.reduced ? 0 : Math.floor(gameState.time * 6) % 2, b.x, b.y, 48, 36, b.dx < 0);
     if (b.mode === "ready") text("!", b.x - 3, b.y - 27, "#83ecec", 18);
     if (b.mode === "mirror") {
       g.strokeStyle = "#adeafa";
@@ -1873,40 +2039,40 @@ function render() {
       sprite(1, b.x + 16, b.y, 24, 18, true);
     }
   }
-  drawTornadoes(g, fauna.tornadoes, time, reduced);
-  for (const z of fauna.zones)
+  drawTornadoes(g, gameState.fauna.tornadoes, gameState.time, gameState.reduced);
+  for (const z of gameState.fauna.zones)
     if (
       z.seen &&
       z.elapsed > 1 &&
-      fauna.birds.some((b) => b.hp && b.zone === z.id) &&
-      Math.hypot(z.x - player.x, z.y - player.y) < 320
+      gameState.fauna.birds.some((b) => b.hp && b.zone === z.id) &&
+      Math.hypot(z.x - gameState.player.x, z.y - gameState.player.y) < 320
     )
       text("影子正在聚集…", z.x - 40, z.y - 40, "#88d5df", 12);
-  if (time < fauna.mirrorUntil) {
+  if (gameState.time < gameState.fauna.mirrorUntil) {
     g.strokeStyle = "#bceefa";
     g.lineWidth = 3;
-    g.strokeRect(player.x - 24, player.y - 38, 48, 76);
+    g.strokeRect(gameState.player.x - 24, gameState.player.y - 38, 48, 76);
   }
-  for (const r of rats) {
+  for (const r of gameState.rats) {
     if (!r.hp) continue;
     const f =
       r.state === "ready"
         ? 2
         : r.state === "dash" || r.state === "jump"
           ? 3
-          : Math.floor(time * 7) % 2;
+          : Math.floor(gameState.time * 7) % 2;
     g.save();
     g.translate(Math.round(r.x), Math.round(r.y));
     if (r.surface === "right") g.rotate(-Math.PI / 2);
     else if (r.surface === "left") g.rotate(Math.PI / 2);
     else if (r.surface === "ceiling") g.rotate(Math.PI);
     if (r.face < 0) g.scale(-1, 1);
-    const sprite = enemyFrames[(isSlime(r) ? 4 : 0) + f];
+    const sprite = gameState.enemyFrames[(isSlime(r) ? 4 : 0) + f];
     const width = r.big ? 52 : isSlime(r) ? 32 : 56,
       height = (width * sprite.h) / sprite.w;
     if (r.big) g.filter = "hue-rotate(175deg) saturate(0.85)";
     g.drawImage(
-      ratImage,
+      gameState.ratImage,
       sprite.x,
       sprite.y,
       sprite.w,
@@ -1917,196 +2083,248 @@ function render() {
       height,
     );
     g.filter = "none";
-    if (time < r.stun) {
+    if (gameState.time < r.stun) {
       g.strokeStyle = "#c7ffa1";
       g.strokeRect(-width / 2 - 3, 10 - height, width + 6, height + 8);
     }
     g.restore();
     if (r.state === "ready") text("!", r.x - 4, r.y - 32, "#f3bc79", 23);
   }
-  if (drawHero && !reduced)
-    for (const t of dashTrail) {
-      g.globalAlpha = Math.max(0, (t.until - time) / 0.18) * 0.25;
-      drawHero(g, 1, 0, t.face < 0, Math.round(t.x - (t.face < 0 ? 28 : 36)), Math.round(t.y - 30));
+  if (gameState.drawHero && !gameState.reduced)
+    for (const t of gameState.dashTrail) {
+      g.globalAlpha = Math.max(0, (t.until - gameState.time) / 0.18) * 0.25;
+      gameState.drawHero(
+        g,
+        1,
+        0,
+        t.face < 0,
+        Math.round(t.x - (t.face < 0 ? 28 : 36)),
+        Math.round(t.y - 30),
+      );
     }
   g.globalAlpha = 1;
-  if (player.dashRemaining > 0) {
+  if (gameState.player.dashRemaining > 0) {
     for (const dy of [-13, 0, 13]) {
-      const len = reduced ? 12 : 30;
+      const len = gameState.reduced ? 12 : 30;
       rect(
-        player.x - player.dashFace * 30 - (player.dashFace > 0 ? len : 0),
-        player.y + dy,
+        gameState.player.x -
+          gameState.player.dashFace * 30 -
+          (gameState.player.dashFace > 0 ? len : 0),
+        gameState.player.y + dy,
         len,
         2,
         "#b4ecf1",
       );
     }
   }
-  if (boss.active) {
+  if (gameState.boss.active) {
     const a = world.arena;
-    rect(a.exit.x - 18, a.floor - 80, 36, 80, boss.hp ? "#673847" : "#bce1a1");
-    text(boss.hp ? "擊敗紅熊開門" : "出口", a.exit.x - 35, a.floor - 90);
-    drawBossEffects(g, boss, time, reduced);
-    for (const m of boss.mirrors)
+    rect(a.exit.x - 18, a.floor - 80, 36, 80, gameState.boss.hp ? "#673847" : "#bce1a1");
+    text(gameState.boss.hp ? "擊敗紅熊開門" : "出口", a.exit.x - 35, a.floor - 90);
+    drawBossEffects(g, gameState.boss, gameState.time, gameState.reduced);
+    for (const m of gameState.boss.mirrors)
       text(m.landed ? "拾取破解鏡" : "鏡子掉落", m.x - 32, m.y - 30, "#d7fff5", 12);
-    if (boss.hp) {
-      paintBoss(g, boss, time, reduced, (ctx) => {
-        if (boss.cursed && drawHero)
-          drawHero(ctx, 1, wingFrame(time, reduced), boss.face < 0, boss.x - 32, boss.y - 30);
-        else drawBear(ctx, boss, time, reduced, false);
+    if (gameState.boss.hp) {
+      paintBoss(g, gameState.boss, gameState.time, gameState.reduced, (ctx) => {
+        if (gameState.boss.cursed && gameState.drawHero)
+          gameState.drawHero(
+            ctx,
+            1,
+            wingFrame(gameState.time, gameState.reduced),
+            gameState.boss.face < 0,
+            gameState.boss.x - 32,
+            gameState.boss.y - 30,
+          );
+        else drawBear(ctx, gameState.boss, gameState.time, gameState.reduced, false);
       });
-      drawBossTelegraph(g, boss);
+      drawBossTelegraph(g, gameState.boss);
       text(
-        boss.state === "ready" ? BOSS_ATTACK_LABELS[boss.attack] : "紅熊",
-        boss.x - 55,
-        boss.y - 63,
+        gameState.boss.state === "ready" ? BOSS_ATTACK_LABELS[gameState.boss.attack] : "紅熊",
+        gameState.boss.x - 55,
+        gameState.boss.y - 63,
         "#ffbfae",
         14,
       );
     }
   }
-  if (drawHero) {
+  if (gameState.drawHero) {
     const moving =
-      player.dashRemaining > 0 ||
-      keys.has("left") ||
-      keys.has("right") ||
-      keys.has("up") ||
-      keys.has("down");
-    const attacking = time < attackUntil;
+      gameState.player.dashRemaining > 0 ||
+      gameState.keys.has("left") ||
+      gameState.keys.has("right") ||
+      gameState.keys.has("up") ||
+      gameState.keys.has("down");
+    const attacking = gameState.time < gameState.attackUntil;
     const row = attacking ? 3 : moving ? 1 : 0;
     const f = attacking
-      ? Math.min(5, Math.floor((0.3 - (attackUntil - time)) / 0.05))
-      : player.gliding
+      ? Math.min(5, Math.floor((0.3 - (gameState.attackUntil - gameState.time)) / 0.05))
+      : gameState.player.gliding
         ? 0
-        : reduced
+        : gameState.reduced
           ? 0
-          : Math.floor(time * 8) % 6;
+          : Math.floor(gameState.time * 8) % 6;
     g.globalAlpha =
-      time < player.inv ? (reduced ? 0.65 : Math.floor(time * 10) % 2 === 0 ? 0.45 : 1) : 1;
-    if (boss.cursed) {
+      gameState.time < gameState.player.inv
+        ? gameState.reduced
+          ? 0.65
+          : Math.floor(gameState.time * 10) % 2 === 0
+            ? 0.45
+            : 1
+        : 1;
+    if (gameState.boss.cursed) {
       const sf =
-        enemyFrames[
-          4 + (player.slimeAttack > 0 ? 3 : player.grounded ? Math.floor(time * 7) % 2 : 2)
+        gameState.enemyFrames[
+          4 +
+            (gameState.player.slimeAttack > 0
+              ? 3
+              : gameState.player.grounded
+                ? Math.floor(gameState.time * 7) % 2
+                : 2)
         ];
       g.save();
-      g.translate(Math.round(player.x), Math.round(player.y));
-      if (player.surface === "right") g.rotate(-Math.PI / 2);
-      else if (player.surface === "left") g.rotate(Math.PI / 2);
-      else if (player.surface === "ceiling") g.rotate(Math.PI);
-      if (player.face < 0) g.scale(-1, 1);
-      g.drawImage(ratImage, sf.x, sf.y, sf.w, sf.h, -18, -17, 36, 28);
+      g.translate(Math.round(gameState.player.x), Math.round(gameState.player.y));
+      if (gameState.player.surface === "right") g.rotate(-Math.PI / 2);
+      else if (gameState.player.surface === "left") g.rotate(Math.PI / 2);
+      else if (gameState.player.surface === "ceiling") g.rotate(Math.PI);
+      if (gameState.player.face < 0) g.scale(-1, 1);
+      g.drawImage(gameState.ratImage, sf.x, sf.y, sf.w, sf.h, -18, -17, 36, 28);
       g.restore();
       g.strokeStyle = "#e2ffe9";
       g.lineWidth = 2;
       g.beginPath();
-      g.ellipse(player.x, player.y, 23, 20, 0, 0, Math.PI * 2);
+      g.ellipse(gameState.player.x, gameState.player.y, 23, 20, 0, 0, Math.PI * 2);
       g.stroke();
-      text("你 · 史萊姆", player.x - 30, player.y - 30, "#d7fff5", 12);
+      text("你 · 史萊姆", gameState.player.x - 30, gameState.player.y - 30, "#d7fff5", 12);
     } else
-      drawHero(
+      gameState.drawHero(
         g,
         row,
         f,
-        player.face < 0,
-        Math.round(player.x - (player.face < 0 ? 28 : 36)),
-        Math.round(player.y - 30),
+        gameState.player.face < 0,
+        Math.round(gameState.player.x - (gameState.player.face < 0 ? 28 : 36)),
+        Math.round(gameState.player.y - 30),
       );
     g.globalAlpha = 1;
-    if (attacking && slash)
-      drawSlash(g, slash, 1 - (attackUntil - time) / 0.3, reduced, slashStyle);
+    if (attacking && gameState.slash)
+      drawSlash(
+        g,
+        gameState.slash,
+        1 - (gameState.attackUntil - gameState.time) / 0.3,
+        gameState.reduced,
+        gameState.slashStyle,
+      );
   }
-  if (chargeStart !== null) {
-    const q = Math.min(1, (time - chargeStart) / B.attack.chargeTime),
-      cx = player.x + player.face * 24;
+  if (gameState.chargeStart !== null) {
+    const q = Math.min(1, (gameState.time - gameState.chargeStart) / B.attack.chargeTime),
+      cx = gameState.player.x + gameState.player.face * 24;
     g.save();
     g.strokeStyle = q >= 1 ? "#ffffff" : "#8edcff";
     g.lineWidth = 3;
     g.beginPath();
-    g.arc(cx, player.y, 7 + q * 12, 0, Math.PI * 2);
+    g.arc(cx, gameState.player.y, 7 + q * 12, 0, Math.PI * 2);
     g.stroke();
     g.fillStyle = "#b8efff";
     g.beginPath();
-    g.arc(cx, player.y, 3 + q * 7, 0, Math.PI * 2);
+    g.arc(cx, gameState.player.y, 3 + q * 7, 0, Math.PI * 2);
     g.fill();
     g.restore();
   }
-  drawEffects(g, magic, time, reduced);
-  healingFeedback.draw(g, player, time, reduced);
+  drawEffects(g, gameState.magic, gameState.time, gameState.reduced);
+  healingFeedback.draw(g, gameState.player, gameState.time, gameState.reduced);
   g.restore();
-  if (time < hurtUntil) {
+  if (gameState.time < gameState.hurtUntil) {
     g.save();
     g.strokeStyle = "#ed9a9a";
     g.lineWidth = 5;
-    g.globalAlpha = reduced ? 0.5 : (hurtUntil - time) / 0.35;
+    g.globalAlpha = gameState.reduced ? 0.5 : (gameState.hurtUntil - gameState.time) / 0.35;
     g.strokeRect(3, 3, canvas.width - 6, canvas.height - 6);
     g.restore();
   }
-  if (boss.active) {
-    rect(canvas.width / 2 - 135, 7, 270, boss.cursed ? 58 : 38, "#17242a");
+  if (gameState.boss.active) {
+    rect(canvas.width / 2 - 135, 7, 270, gameState.boss.cursed ? 58 : 38, "#17242a");
     rect(canvas.width / 2 - 120, 14, 240, 8, "#482b36");
-    rect(canvas.width / 2 - 120, 14, (240 * boss.hp) / boss.maxHp, 8, "#d7777c");
-    text(`紅熊 ${boss.hp} / ${boss.maxHp}`, canvas.width / 2 - 120, 38, "#ffe1d0", 12);
-    if (boss.cursed) text("史萊姆：拾取重踏掉落的鏡子", canvas.width / 2 - 120, 57, "#b6e7c9", 12);
+    rect(
+      canvas.width / 2 - 120,
+      14,
+      (240 * gameState.boss.hp) / gameState.boss.maxHp,
+      8,
+      "#d7777c",
+    );
+    text(
+      `紅熊 ${gameState.boss.hp} / ${gameState.boss.maxHp}`,
+      canvas.width / 2 - 120,
+      38,
+      "#ffe1d0",
+      12,
+    );
+    if (gameState.boss.cursed)
+      text("史萊姆：拾取重踏掉落的鏡子", canvas.width / 2 - 120, 57, "#b6e7c9", 12);
   }
   // Explored-only overview; no undiscovered paths are revealed.
-  if (!boss.active) {
+  if (!gameState.boss.active) {
     const scale = Math.min(canvas.width < 600 ? 0.55 : 0.8, 130 / H),
       mx = canvas.width - W * scale - 18,
       my = 14;
     rect(mx - 6, my - 6, W * scale + 12, H * scale + 24, "#0f2029");
-    for (const s of seen) {
+    for (const s of gameState.seen) {
       const [x, y] = s.split(",").map(Number);
       rect(mx + x * scale, my + y * scale, Math.max(1, scale), Math.max(1, scale), "#617b70");
     }
-    for (const l of lights)
-      if (!l.got && seen.has(`${Math.floor(l.x / T)},${Math.floor(l.y / T)}`))
+    for (const l of gameState.lights)
+      if (!l.got && gameState.seen.has(`${Math.floor(l.x / T)},${Math.floor(l.y / T)}`))
         rect(mx + (l.x / T) * scale, my + (l.y / T) * scale, 3, 3, "#ffe6a0");
-    for (const r of rewards)
-      if (!r.got && seen.has(`${Math.floor(r.x / T)},${Math.floor(r.y / T)}`))
+    for (const r of gameState.rewards)
+      if (!r.got && gameState.seen.has(`${Math.floor(r.x / T)},${Math.floor(r.y / T)}`))
         rect(
           mx + (r.x / T) * scale,
           my + (r.y / T) * scale,
           r.kind === "relic" ? 3 : 2,
           r.kind === "relic" ? "#cfadf4" : r.kind === "wing" ? "#78df99" : "#f0a660",
         );
-    for (const w of crackedWalls)
+    for (const w of gameState.crackedWalls)
       if (w.discovered) {
         g.strokeStyle = w.broken ? "#9bdcbf" : "#dca36b";
         g.strokeRect(mx + (w.x / T) * scale, my + (w.y / T) * scale, 4, 4);
       }
     for (const [i, l] of world.safes.entries())
-      if (activated.has(i)) {
+      if (gameState.activated.has(i)) {
         rect(mx + (l.x / T) * scale, my + (l.y / T) * scale, 3, 3, "#ffe7b1");
       }
-    rect(mx + (player.x / T) * scale, my + (player.y / T) * scale, 3, 3, "#9ef1db");
+    rect(
+      mx + (gameState.player.x / T) * scale,
+      my + (gameState.player.y / T) * scale,
+      3,
+      3,
+      "#9ef1db",
+    );
     text("已探索", mx + 4, my + H * scale + 12, "#bad0bd", 10);
   }
-  const px = player.x - camera.x,
-    py = player.y - camera.y;
-  if (!player.slimeForm) {
+  const px = gameState.player.x - gameState.camera.x,
+    py = gameState.player.y - gameState.camera.y;
+  if (!gameState.player.slimeForm) {
     rect(px - 20, py + 36, 40, 4, "#42524a");
-    rect(px - 20, py + 36, (40 * player.wing) / MAX_WING, 4, "#b8dab5");
+    rect(px - 20, py + 36, (40 * gameState.player.wing) / MAX_WING, 4, "#b8dab5");
   }
-  if (comboStage && time <= comboUntil)
-    text(["", "Ⅰ 直斬", "Ⅱ 迴旋", "Ⅲ 十字"][comboStage], px - 24, py - 40, "#ffe1ac", 11);
-  if (breachHold) {
-    const q = Math.min(1, (time - breachHold.start) / BREACH_HOLD);
+  if (gameState.comboStage && gameState.time <= gameState.comboUntil)
+    text(["", "Ⅰ 直斬", "Ⅱ 迴旋", "Ⅲ 十字"][gameState.comboStage], px - 24, py - 40, "#ffe1ac", 11);
+  if (gameState.breachHold) {
+    const q = Math.min(1, (gameState.time - gameState.breachHold.start) / BREACH_HOLD);
     rect(px - 26, py - 46, 52, 6, "#283c25");
     rect(px - 26, py - 46, 52 * q, 6, "#c5dd98");
     text("破牆", px - 14, py - 51, "#dbe9ba", 11);
   }
-  if (chargeStart !== null)
+  if (gameState.chargeStart !== null)
     text(
-      time - chargeStart >= B.attack.chargeTime
+      gameState.time - gameState.chargeStart >= B.attack.chargeTime
         ? "放開發射"
-        : `蓄力 ${Math.min(100, Math.floor(((time - chargeStart) / B.attack.chargeTime) * 100))}%`,
+        : `蓄力 ${Math.min(100, Math.floor(((gameState.time - gameState.chargeStart) / B.attack.chargeTime) * 100))}%`,
       px - 32,
       py - 40,
       "#bdefff",
       11,
     );
   text(
-    `${Math.floor(time / 60)}:${String(Math.floor(time % 60)).padStart(2, "0")}`,
+    `${Math.floor(gameState.time / 60)}:${String(Math.floor(gameState.time % 60)).padStart(2, "0")}`,
     14,
     24,
     "#bed0bd",
@@ -2122,35 +2340,35 @@ function drawJourneyMap() {
   ctx.fillStyle = "#adbe87";
   ctx.fillRect(0, 0, c.width, c.height);
   ctx.fillStyle = "#263b29";
-  for (const cell of seen) {
+  for (const cell of gameState.seen) {
     const [x, y] = cell.split(",").map(Number);
     ctx.fillRect(ox + x * scale, oy + y * scale, Math.max(1, scale), Math.max(1, scale));
   }
   ctx.strokeStyle = "#233522";
-  for (const w of crackedWalls)
+  for (const w of gameState.crackedWalls)
     if (w.discovered) ctx.strokeRect(ox + (w.x / T) * scale - 2, oy + (w.y / T) * scale - 2, 6, 6);
-  const px = ox + (player.x / T) * scale,
-    py = oy + (player.y / T) * scale;
+  const px = ox + (gameState.player.x / T) * scale,
+    py = oy + (gameState.player.y / T) * scale;
   ctx.fillStyle = "#000";
   ctx.fillRect(px - 5, py - 1, 11, 3);
   ctx.fillRect(px - 1, py - 5, 3, 11);
 }
 function loop(now) {
-  debug?.frame(now);
-  const dt = Math.min(0.05, last ? (now - last) / 1000 : 0);
-  last = now;
-  if (mode === "playing") {
-    if (hitStop > 0) hitStop = Math.max(0, hitStop - dt);
+  gameState.debug?.frame(now);
+  const dt = Math.min(0.05, gameState.last ? (now - gameState.last) / 1000 : 0);
+  gameState.last = now;
+  if (gameState.mode === "playing") {
+    if (gameState.hitStop > 0) gameState.hitStop = Math.max(0, gameState.hitStop - dt);
     else update(dt);
   }
   syncMusic();
   syncChargeSound();
   combatSounds.flush();
-  if (player && ratImage) render();
+  if (gameState.player && gameState.ratImage) render();
   requestAnimationFrame(loop);
 }
 try {
-  [drawHero, ratImage] = await Promise.all([
+  [gameState.drawHero, gameState.ratImage] = await Promise.all([
     loadHero(),
     (async () => {
       const im = new Image();
@@ -2161,13 +2379,13 @@ try {
   ]);
   for (let row = 0; row < 2; row++)
     for (let col = 0; col < 4; col++) {
-      const cw = Math.floor(ratImage.width / 4),
-        ch = Math.floor(ratImage.height / 2),
+      const cw = Math.floor(gameState.ratImage.width / 4),
+        ch = Math.floor(gameState.ratImage.height / 2),
         c = document.createElement("canvas");
       c.width = cw;
       c.height = ch;
       const ctx = c.getContext("2d");
-      ctx.drawImage(ratImage, col * cw, row * ch, cw, ch, 0, 0, cw, ch);
+      ctx.drawImage(gameState.ratImage, col * cw, row * ch, cw, ch, 0, 0, cw, ch);
       const data = ctx.getImageData(0, 0, cw, ch).data;
       let l = cw,
         t = ch,
@@ -2181,25 +2399,25 @@ try {
             t = Math.min(t, y);
             b = Math.max(b, y);
           }
-      enemyFrames.push({
+      gameState.enemyFrames.push({
         x: col * cw + l,
         y: row * ch + t,
         w: Math.max(1, r - l + 1),
         h: Math.max(1, b - t + 1),
       });
     }
-  faunaImage = new Image();
-  faunaImage.src = new URL("../assets/sprites/fauna.png", import.meta.url).href;
-  await faunaImage.decode();
+  gameState.faunaImage = new Image();
+  gameState.faunaImage.src = new URL("../assets/sprites/fauna.png", import.meta.url).href;
+  await gameState.faunaImage.decode();
   for (let row = 0; row < 2; row++)
     for (let col = 0; col < 2; col++) {
-      const w = faunaImage.width / 2,
-        h = faunaImage.height / 2,
+      const w = gameState.faunaImage.width / 2,
+        h = gameState.faunaImage.height / 2,
         c = document.createElement("canvas");
       c.width = w;
       c.height = h;
       const ctx = c.getContext("2d");
-      ctx.drawImage(faunaImage, col * w, row * h, w, h, 0, 0, w, h);
+      ctx.drawImage(gameState.faunaImage, col * w, row * h, w, h, 0, 0, w, h);
       const d = ctx.getImageData(0, 0, w, h).data;
       let left = w,
         top = h,
@@ -2213,7 +2431,7 @@ try {
             top = Math.min(top, y);
             bottom = Math.max(bottom, y);
           }
-      faunaFrames.push({
+      gameState.faunaFrames.push({
         x: col * w + left,
         y: row * h + top,
         w: right - left + 1,
@@ -2221,21 +2439,26 @@ try {
       });
     }
   reset();
-  mode = "intro";
+  gameState.mode = "intro";
   loadCheckpointMenu();
   if (debugEnabled) {
     const { createDebugPanel } = await import("./debug.mjs");
-    debug = createDebugPanel({
-      state: () => ({ player, boss, rats, fauna }),
+    gameState.debug = createDebugPanel({
+      state: () => ({
+        player: gameState.player,
+        boss: gameState.boss,
+        rats: gameState.rats,
+        fauna: gameState.fauna,
+      }),
       refresh: updateHud,
       clearInput: () => {
-        clearTouch();
-        keys.clear();
+        gameState.clearTouch();
+        gameState.keys.clear();
         cancelAttackInput();
       },
       jumpToBoss: () => {
-        if (mode === "reading") return false;
-        lights.forEach((light) => (light.got = true));
+        if (gameState.mode === "reading") return false;
+        gameState.lights.forEach((light) => (light.got = true));
         beginBoss();
         resume();
         return true;
@@ -2251,28 +2474,28 @@ try {
 }
 // Read-only snapshot for playthrough checks; game state is never exposed for mutation.
 window.levelSnapshot = (includeMap = false) => ({
-  mode,
+  mode: gameState.mode,
   healing: healingFeedback.event ? { ...healingFeedback.event } : null,
   levelVersion: world.version,
   seed: world.seed,
-  exploration: structuredClone(exploration),
-  camera: { ...camera },
-  boss: { ...boss },
-  slashStyle,
-  magic: JSON.parse(JSON.stringify(magic)),
-  fauna: JSON.parse(JSON.stringify(fauna)),
-  player: { ...player },
-  lights: lights.map((l) => ({ ...l })),
-  rats: rats.map((r) => ({ ...r })),
-  rewards: rewards.map((r) => ({ ...r })),
-  torches: torches.map((t) => ({ ...t })),
-  crackedWalls: crackedWalls.map((w) => ({ ...w })),
-  checkpoint: { ...checkpoint },
-  kills,
-  time,
+  exploration: structuredClone(gameState.exploration),
+  camera: { ...gameState.camera },
+  boss: { ...gameState.boss },
+  slashStyle: gameState.slashStyle,
+  magic: JSON.parse(JSON.stringify(gameState.magic)),
+  fauna: JSON.parse(JSON.stringify(gameState.fauna)),
+  player: { ...gameState.player },
+  lights: gameState.lights.map((l) => ({ ...l })),
+  rats: gameState.rats.map((r) => ({ ...r })),
+  rewards: gameState.rewards.map((r) => ({ ...r })),
+  torches: gameState.torches.map((t) => ({ ...t })),
+  crackedWalls: gameState.crackedWalls.map((w) => ({ ...w })),
+  checkpoint: { ...gameState.checkpoint },
+  kills: gameState.kills,
+  time: gameState.time,
   map: includeMap ? map.map((r) => r.slice()) : undefined,
   exit: { ...world.exit },
   safes: world.safes.map((s) => ({ ...s })),
-  traps: world.traps.map((t) => ({ ...t, ...spikeState(time) })),
-  deaths,
+  traps: world.traps.map((t) => ({ ...t, ...spikeState(gameState.time) })),
+  deaths: gameState.deaths,
 });

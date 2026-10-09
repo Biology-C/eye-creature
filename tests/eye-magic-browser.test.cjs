@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global check:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("fs"),
@@ -18,7 +19,7 @@ const { chromium } = require("playwright");
       await r.fulfill({
         contentType: "application/javascript",
         body:
-          fs.readFileSync("src/game.js", "utf8") +
+          instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
           "\nwindow.check={update,render,reset,attack,dash,autoAttack,castLight,get player(){return player},get rats(){return rats},get fauna(){return fauna},get magic(){return magic}};",
       });
     });

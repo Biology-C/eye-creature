@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global sfxStats:readonly, liveAudioCount:readonly, sfxTest:readonly, recordedStarts:readonly, levelSnapshot:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const { chromium } = require("playwright");
@@ -80,7 +81,7 @@ const base = process.env.BASE_URL || "http://127.0.0.1:8768/";
       r.fulfill({
         contentType: "application/javascript",
         body:
-          fs.readFileSync("src/game.js", "utf8") +
+          instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
           `
       window.sfxTest={sfx,cues,attack,fireLight,dash,pressAttack,releaseAttack,syncChargeSound,cancelAttackInput,pause,resume,hurt,
         get p(){return player},get mode(){return mode},get shots(){return magic.shots},

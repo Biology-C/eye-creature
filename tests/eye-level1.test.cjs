@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global step:readonly, test:readonly, levelSnapshot:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("fs"),
@@ -18,11 +19,11 @@ const { chromium } = pw;
   const errors = [];
   p.on("pageerror", (e) => errors.push(e.message));
   await p.route("**/game.js", async (r) => {
-    let s = fs.readFileSync(path.join(__dirname, "../src/game.js"), "utf8");
+    let s = instrumentGame(fs.readFileSync(path.join(__dirname, "../src/game.js"), "utf8"));
     // Ignore formatting when disabling rendering for the accelerated route simulation.
     s = s.replace(
-      /if\s*\(\s*player\s*&&\s*ratImage\s*\)\s*render\(\)/,
-      "if(player&&ratImage&&!window.fast)render()",
+      /if\s*\(\s*gameState\.player\s*&&\s*gameState\.ratImage\s*\)\s*render\(\)/,
+      "if(gameState.player&&gameState.ratImage&&!window.fast)render()",
     );
     s +=
       "\nwindow.test={world,update,reset,keys,render,attack,get player(){return player},get rats(){return rats}};";

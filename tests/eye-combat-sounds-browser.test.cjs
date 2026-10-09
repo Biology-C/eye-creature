@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global cs:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
@@ -16,7 +17,7 @@ const fs = require("node:fs"),
       r.fulfill({
         contentType: "application/javascript",
         body:
-          fs.readFileSync("src/game.js", "utf8") +
+          instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
           `
  window.cs={attack,applyMelee,fireLight,dash,hurt,update,beginBoss,combatSounds,keys,
  get p(){return player},get rats(){return rats},get boss(){return boss},get magic(){return magic},get fauna(){return fauna},

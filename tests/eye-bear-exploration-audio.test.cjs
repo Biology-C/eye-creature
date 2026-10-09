@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global ba:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
@@ -16,7 +17,7 @@ const fs = require("node:fs"),
       r.fulfill({
         contentType: "application/javascript",
         body:
-          fs.readFileSync("src/game.js", "utf8") +
+          instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
           `
  window.ba={reset,resume,beginBoss,update,mirror,hurt,pressAttack,releaseAttack,applySlimeHit,attack,fireLight,dash,syncForm,syncChargeSound,finishBoss,saveCheckpoint,restoreCheckpoint,captureCheckpoint,breach,keys,world,combatSounds,music,sfx,sceneMirrors,
  get p(){return player},get b(){return boss},get rats(){return rats},get fauna(){return fauna},get env(){return exploration},get walls(){return crackedWalls},get mode(){return mode},get t(){return time},get magic(){return magic},calls:[],

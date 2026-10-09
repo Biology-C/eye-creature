@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global h:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
@@ -19,7 +20,7 @@ const fs = require("node:fs"),
       r.fulfill({
         contentType: "application/javascript",
         body:
-          fs.readFileSync("src/game.js", "utf8") +
+          instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
           `\nwindow.h={reset,resume,update,render,pressAttack,releaseAttack,cancelAttackInput,breach,keys,sceneMirrors,world,get p(){return player},get walls(){return crackedWalls},get rats(){return rats},get fauna(){return fauna},get boss(){return boss},get mode(){return mode},get magic(){return magic},get held(){return breachHold},get charge(){return chargeStart},tick(n){for(let i=0;i<n;i++)update(1/60)},prepare(){reset();resume();player.inv=1e9;rewards.forEach(r=>r.got=true);rats.forEach(r=>r.hp=0);fauna.trees.forEach(r=>r.hp=0);fauna.birds.forEach(r=>r.hp=0)}};`,
       }),
     );

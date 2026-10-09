@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global chargeTest:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
@@ -20,7 +21,7 @@ const fs = require("node:fs"),
         r.fulfill({
           contentType: "application/javascript",
           body:
-            fs.readFileSync("src/game.js", "utf8") +
+            instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
             `
  window.chargeTest={update,render,pause,resume,hurt,world,pressAttack,releaseAttack,get p(){return player},get b(){return boss},get shots(){return magic.shots},get charge(){return chargeStart},get time(){return time},prepare(face=1){reset();beginBoss();resume();boss.x=400;boss.timer=999;boss.stun=9999;player.x=400-face*200;player.y=world.arena.floor-11.01;player.face=face;player.inv=9999;player.grounded=true;},tick(n,fps){for(let i=0;i<n;i++)update(1/fps);render()}};
  `,

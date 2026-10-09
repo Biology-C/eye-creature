@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global musicPlayers:readonly, musicGains:readonly, bgmTest:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("node:fs"),
@@ -32,7 +33,7 @@ const fs = require("node:fs"),
       route.fulfill({
         contentType: "application/javascript",
         body:
-          fs.readFileSync("src/game.js", "utf8") +
+          instrumentGame(fs.readFileSync("src/game.js", "utf8")) +
           `\nwindow.bgmTest={music,syncMusic,beginBoss,pause,resume,hurt,update,get player(){return player},get boss(){return boss},win(){mode='won';syncMusic()}};`,
       }),
     );

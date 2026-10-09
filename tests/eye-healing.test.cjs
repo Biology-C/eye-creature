@@ -1,3 +1,4 @@
+const { instrumentGame } = require("./helpers/game-harness.cjs");
 /* global check:readonly */
 // Page globals supplied by the game/preview or this file's injected browser harness.
 const fs = require("fs"),
@@ -14,7 +15,7 @@ const { chromium } = require("playwright");
     const errors = [];
     p.on("pageerror", (e) => errors.push(e.message));
     await p.route("**/game.js", async (r) => {
-      const s = fs.readFileSync(path.join(__dirname, "../src/game.js"), "utf8");
+      const s = instrumentGame(fs.readFileSync(path.join(__dirname, "../src/game.js"), "utf8"));
       await r.fulfill({
         contentType: "application/javascript",
         body:
